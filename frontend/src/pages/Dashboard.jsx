@@ -147,16 +147,37 @@ export const Dashboard = () => {
       setError(null);
 
       const summary = await dashboardService.getSummary();
-      if (summary.todayAttendance) {
-        setTodayAttendance(summary.todayAttendance);
+
+      if (summary.role === 'ADMIN' || summary.role === 'HR_OFFICER') {
+        // Admin/HR response: stats object with aggregate counts
+        if (summary.stats) {
+          setStats({
+            total: summary.stats.total_employees || 0,
+            present: summary.stats.checked_in_today || 0,
+            leave: summary.stats.pending_leave_requests || 0,
+            absent: Math.max(0, (summary.stats.total_employees || 0) - (summary.stats.checked_in_today || 0) - (summary.stats.checked_out_today || 0)),
+          });
+        }
+        // Admin doesn't have a personal attendance widget
+        setTodayAttendance({ status: 'Absent', check_in: '--', check_out: '--', duration: '0h 0m' });
+      } else {
+        // Employee response: personal attendance/leave/payroll
+        if (summary.todayAttendance) {
+          setTodayAttendance(summary.todayAttendance);
+        }
       }
 
+      // Recent activity feed still uses mock data (no backend endpoint yet)
       const emps = employeeRepository.getAll();
       const total = emps.length;
-      const present = emps.filter(e => e.status === "Present").length;
-      const leave = emps.filter(e => e.status === "On Leave").length;
-      const absent = emps.filter(e => e.status === "Absent").length;
-      setStats({ total, present, leave, absent });
+      const present = emps.filter(e => e.status === 'Present').length;
+      const leave = emps.filter(e => e.status === 'On Leave').length;
+      const absent = emps.filter(e => e.status === 'Absent').length;
+
+      // Only override stats from mock if we got an employee response (not admin)
+      if (summary.role !== 'ADMIN' && summary.role !== 'HR_OFFICER') {
+        setStats({ total, present, leave, absent });
+      }
 
       // Merge check-in/out & leave logs
       const mockAttendance = attendanceRepository.getAll();

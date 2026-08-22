@@ -19,7 +19,8 @@ export const EmployeeDetail = () => {
       try {
         setLoading(true);
         setError(null);
-        const record = await employeeService.getById(id);
+        // id from URL params is the employee_code string (e.g. "EMP-0624")
+        const record = await employeeService.getByCode(id);
         if (record) {
           setEmployee(record);
           // Fetch leave balances for this employee using frontend-only data

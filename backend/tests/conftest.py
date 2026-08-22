@@ -10,6 +10,7 @@ Solution: monkeypatch the app's AsyncSessionLocal to use a NullPool engine
 """
 
 import uuid
+from unittest.mock import AsyncMock, patch
 
 import pytest
 import pytest_asyncio
@@ -22,6 +23,25 @@ from app.core.security import hash_password
 from app.main import app
 from app.models.user import User, UserRole
 import app.db.session as db_session_module
+
+
+@pytest.fixture(autouse=True)
+def stub_email_enqueue():
+    """
+    Globally stub out ARQ email enqueue for all tests.
+
+    Without this, every POST /api/employees call during pytest attempts to
+    connect to a real Redis instance and queue a real credential email job,
+    which the ARQ worker would then pick up and dispatch via Gmail SMTP.
+
+    Tests that need to assert on the enqueue itself (test_email_notifications.py)
+    patch the same target locally inside the test, which overrides this stub.
+    """
+    with patch(
+        "app.services.employee_service.enqueue_send_credentials_job",
+        new_callable=AsyncMock,
+    ):
+        yield
 
 
 @pytest_asyncio.fixture(autouse=True)

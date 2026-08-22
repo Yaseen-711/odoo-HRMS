@@ -33,10 +33,12 @@ export const Attendance = () => {
       if (user) {
         setCurrentUser(user);
         try {
-          if (user.role === "ADMIN") {
+          if (user.role === "ADMIN" || user.role === "HR_OFFICER") {
+            // Admin/HR: load all employees for directory lookup in the table
             const emps = await employeeService.getAll();
             setEmployees(emps);
           } else {
+            // Employee: load own profile only
             const me = await employeeService.getMyProfile();
             setEmployees([me]);
           }
@@ -87,23 +89,28 @@ export const Attendance = () => {
 
   const loadAttendanceData = async (user) => {
     try {
-      const employeeId = user.employee_id;
-      const today = await attendanceService.getDaily(employeeId);
-      setTodayAttendance(today);
-
-      let logs = [];
-      if (user.role === "ADMIN") {
-        logs = await attendanceService.getAll();
+      if (user.role === "ADMIN" || user.role === "HR_OFFICER") {
+        // Admin/HR: load all attendance records, skip personal clock widget
+        const logs = await attendanceService.getAll();
+        setHistoryLogs(logs);
+        // Admin has no personal attendance widget — leave todayAttendance as default
       } else {
+        // Employee: use employee_id from stored session (populated during login)
+        const employeeId = user.employee_id;
+        if (employeeId) {
+          const today = await attendanceService.getDaily(employeeId);
+          setTodayAttendance(today);
+        }
+
         // Calculate weekStart (Monday) for the current week
         const todayDate = new Date();
         const day = todayDate.getDay();
         const diff = todayDate.getDate() - day + (day === 0 ? -6 : 1);
         const monDate = new Date(todayDate.setDate(diff));
         const weekStart = monDate.toISOString().split("T")[0];
-        logs = await attendanceService.getWeekly(employeeId, weekStart);
+        const logs = await attendanceService.getWeekly(employeeId, weekStart);
+        setHistoryLogs(logs);
       }
-      setHistoryLogs(logs);
     } catch (err) {
       console.error(err);
       throw err;

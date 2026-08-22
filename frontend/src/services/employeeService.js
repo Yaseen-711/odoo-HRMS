@@ -27,11 +27,23 @@ export const employeeService = {
   },
 
   /**
-   * Get employee by numeric ID.
+   * Get employee by numeric database ID.
    * GET /api/employees/{id} → EmployeeAdminOut | EmployeeSelfOut | EmployeeOut
    */
   getById: async (id) => {
     const data = await apiClient.get(`/employees/${id}`);
+    return transformEmployee(data);
+  },
+
+  /**
+   * Get employee by employee_code (e.g. "EMP-0001").
+   * GET /api/employees/code/{employee_code} → EmployeeAdminOut | EmployeeSelfOut | EmployeeOut
+   *
+   * Use this when navigating from the directory where the URL contains
+   * the business-facing employee_code, not the numeric DB id.
+   */
+  getByCode: async (employeeCode) => {
+    const data = await apiClient.get(`/employees/code/${encodeURIComponent(employeeCode)}`);
     return transformEmployee(data);
   },
 
