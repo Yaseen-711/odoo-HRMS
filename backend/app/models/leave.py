@@ -2,7 +2,7 @@
 
 import enum
 from datetime import date, datetime
-
+from app.models.employee import Employee
 from sqlalchemy import (
     Date,
     DateTime,
