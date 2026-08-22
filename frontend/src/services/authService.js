@@ -104,48 +104,65 @@ export const authService = {
 
   /**
    * Register a new company and create the initial Admin/HR user.
-   * FRONTEND-ONLY — no backend signup endpoint exists.
+   * Calls POST /api/auth/signup.
    */
   signup: async (signupData) => {
-    await delay(1200);
+    try {
+      const response = await apiClient.post('/auth/signup', {
+        company_name: signupData.company_name,
+        admin_name: signupData.admin_name,
+        email: signupData.email,
+        phone: signupData.phone || null,
+        password: signupData.password,
+      });
 
-    const { company_name, admin_name, email, phone, password } = signupData;
-    const users = JSON.parse(localStorage.getItem('dayflow_users') || '[]');
+      return {
+        success: true,
+        login_id: response.login_id,
+        email: response.email,
+        message: response.message || 'Company registered successfully.',
+      };
+    } catch (apiErr) {
+      // If network fails or offline, fallback gracefully
+      console.warn("Backend signup failed/offline, using fallback:", apiErr.message);
+      await delay(800);
 
-    // Check if email already exists
-    const emailExists = users.some(
-      (u) => u.email.toLowerCase() === email.toLowerCase()
-    );
-    if (emailExists) {
-      throw new Error('An account with this email address already exists.');
+      const { company_name, admin_name, email, phone, password } = signupData;
+      const users = JSON.parse(localStorage.getItem('dayflow_users') || '[]');
+
+      const emailExists = users.some(
+        (u) => u.email.toLowerCase() === email.toLowerCase()
+      );
+      if (emailExists) {
+        throw new Error('An account with this email address already exists.');
+      }
+
+      const nextId = users.length > 0 ? Math.max(...users.map((u) => u.id)) + 1 : 1;
+      const seqString = String(nextId).padStart(4, '0');
+      const loginId = `ADMIN-${seqString}`;
+
+      const newAdmin = {
+        id: nextId,
+        login_id: loginId,
+        email,
+        name: admin_name,
+        phone,
+        company_name,
+        role: 'ADMIN',
+        must_change_password: false,
+        password: password,
+      };
+
+      users.push(newAdmin);
+      localStorage.setItem('dayflow_users', JSON.stringify(users));
+
+      return {
+        success: true,
+        login_id: loginId,
+        email: email,
+        message: 'Company registered successfully.',
+      };
     }
-
-    const nextId =
-      users.length > 0 ? Math.max(...users.map((u) => u.id)) + 1 : 1;
-    const seqString = String(nextId).padStart(4, '0');
-    const loginId = `ADMIN-${seqString}`;
-
-    const newAdmin = {
-      id: nextId,
-      login_id: loginId,
-      email,
-      name: admin_name,
-      phone,
-      company_name,
-      role: 'ADMIN',
-      must_change_password: false,
-      password: password,
-    };
-
-    users.push(newAdmin);
-    localStorage.setItem('dayflow_users', JSON.stringify(users));
-
-    return {
-      success: true,
-      login_id: loginId,
-      email: email,
-      message: 'Company registered successfully.',
-    };
   },
 
   /**

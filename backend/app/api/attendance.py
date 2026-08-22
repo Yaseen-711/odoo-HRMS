@@ -4,6 +4,7 @@ import logging
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, require_admin, require_employee
@@ -105,3 +106,51 @@ async def list_attendance(
 ) -> list[AttendanceOut]:
     records = await attendance_service.list_all_attendance(db, for_date)
     return [AttendanceOut.model_validate(r) for r in records]
+
+
+@router.get(
+    "/export",
+    summary="[Admin] Export Attendance Report as CSV",
+)
+async def export_attendance_csv(
+    month: int | None = Query(default=None, ge=1, le=12),
+    year: int | None = Query(default=None, ge=2000, le=2100),
+    department: str | None = Query(default=None),
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Generates a CSV report of attendance records."""
+    import csv
+    import io
+
+    records = await attendance_service.list_all_attendance(db)
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Date", "Employee ID", "Employee Code", "Check-In", "Check-Out", "Work Hours", "Status"])
+
+    for r in records:
+        # Filter by month/year if provided
+        if month and r.date.month != month:
+            continue
+        if year and r.date.year != year:
+            continue
+
+        writer.writerow([
+            r.date.isoformat(),
+            r.employee_id,
+            r.employee.employee_code if r.employee else f"EMP-{r.employee_id}",
+            r.check_in.isoformat() if r.check_in else "",
+            r.check_out.isoformat() if r.check_out else "",
+            r.work_hours or 0.0,
+            r.status.value if r.status else "",
+        ])
+
+    csv_data = output.getvalue()
+    filename = f"attendance_report_{year or 'all'}_{month or 'all'}.csv"
+    return StreamingResponse(
+        iter([csv_data]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+

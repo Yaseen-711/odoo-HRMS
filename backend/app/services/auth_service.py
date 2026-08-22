@@ -5,10 +5,13 @@ import logging
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ConflictError, ForbiddenError, UnauthorizedError
+from app.core.exceptions import AlreadyExistsError, ConflictError, ForbiddenError, UnauthorizedError
 from app.core.security import create_access_token, hash_password, verify_password
-from app.models.user import User
-from app.schemas.auth import ChangePasswordRequest, Token
+from app.models.company import Company
+from app.models.employee import Employee
+from app.models.user import User, UserRole
+from app.schemas.auth import ChangePasswordRequest, CompanySignup, CompanySignupResponse, Token
+from app.services.login_id_service import generate_login_id
 
 logger = logging.getLogger(__name__)
 
@@ -65,3 +68,71 @@ async def change_password(
     db.add(user)
     await db.commit()
     logger.info("Password changed  user_id=%s", user.id)
+
+
+async def register_company(
+    db: AsyncSession,
+    data: CompanySignup,
+) -> CompanySignupResponse:
+    """
+    Register a new company and create the initial Admin user and Employee record.
+    """
+    # 1. Check if email already exists
+    existing = await db.execute(select(User).where(User.email == data.email))
+    if existing.scalar_one_or_none():
+        raise AlreadyExistsError(f"An account with email '{data.email}' already exists")
+
+    # Split name into first and last name
+    name_parts = data.admin_name.strip().split(" ", 1)
+    first_name = name_parts[0]
+    last_name = name_parts[1] if len(name_parts) > 1 else "Admin"
+
+    # Generate atomic sequence login_id and employee_code
+    login_id = await generate_login_id(db, first_name, last_name)
+
+    try:
+        # Create Company
+        company = Company(name=data.company_name)
+        db.add(company)
+        await db.flush()
+
+        # Create Admin User
+        user = User(
+            login_id=login_id,
+            email=data.email,
+            hashed_password=hash_password(data.password),
+            role=UserRole.ADMIN,
+            must_change_password=False,
+            is_active=True,
+            company_id=company.id,
+        )
+        db.add(user)
+        await db.flush()
+
+        # Create Admin Employee Record
+        employee = Employee(
+            user_id=user.id,
+            company_id=company.id,
+            employee_code=login_id,
+            first_name=first_name,
+            last_name=last_name,
+            phone=data.phone,
+            company=data.company_name,
+            job_position="Administrator",
+            department="HR & Admin",
+        )
+        db.add(employee)
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        logger.error("Failed to register company, transaction rolled back. Error: %s", e)
+        raise e
+
+    logger.info("Company registered  company_name=%s  login_id=%s", data.company_name, login_id)
+    return CompanySignupResponse(
+        success=True,
+        login_id=login_id,
+        email=data.email,
+        message="Company registered successfully.",
+    )
+

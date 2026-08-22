@@ -22,6 +22,13 @@ class Employee(Base):
         index=True,
     )
 
+    company_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("companies.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     # HR-visible identifier shown on payslips, badges, etc.
     employee_code: Mapped[str] = mapped_column(
         String(50),
@@ -102,6 +109,13 @@ class Employee(Base):
         "SalaryStructure",
         back_populates="employee",
         uselist=False,
+        lazy="select",
+        cascade="all, delete-orphan",
+    )
+
+    documents: Mapped[list["Document"]] = relationship(  # noqa: F821
+        "Document",
+        back_populates="employee",
         lazy="select",
         cascade="all, delete-orphan",
     )

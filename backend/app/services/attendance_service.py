@@ -5,6 +5,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
@@ -148,7 +149,7 @@ async def list_all_attendance(
     for_date: date | None = None,
 ) -> list[Attendance]:
     """Admin: list attendance records, optionally filtered by date."""
-    stmt = select(Attendance)
+    stmt = select(Attendance).options(selectinload(Attendance.employee))
     if for_date:
         stmt = stmt.where(Attendance.date == for_date)
     result = await db.execute(stmt.order_by(Attendance.date.desc()))

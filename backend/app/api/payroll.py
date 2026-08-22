@@ -2,7 +2,7 @@
 
 import logging
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, require_admin, require_employee
@@ -11,6 +11,7 @@ from app.db.session import get_db
 from app.models.user import User, UserRole
 from app.schemas.payroll import SalaryOut, SalaryStructureCreate, SalaryStructureUpdate
 from app.services import employee_service, payroll_service
+from app.services.pdf_service import generate_payslip_pdf
 
 logger = logging.getLogger(__name__)
 
@@ -77,3 +78,29 @@ async def update_salary(
     db: AsyncSession = Depends(get_db),
 ) -> SalaryOut:
     return await payroll_service.update_salary_structure(db, employee_id, data)
+
+
+@router.get(
+    "/{employee_id}/slip",
+    summary="Download Payslip as PDF",
+)
+async def download_payslip(
+    employee_id: int,
+    month: int = Query(default=8, ge=1, le=12),
+    year: int = Query(default=2026, ge=2000, le=2100),
+    current_user: User = Depends(require_employee),
+    db: AsyncSession = Depends(get_db),
+):
+    emp = await employee_service.get_employee_by_id(db, employee_id)
+    await employee_service.require_own_or_admin(current_user, emp)
+
+    salary = await payroll_service.get_salary_structure(db, employee_id)
+    pdf_bytes = generate_payslip_pdf(emp, salary, month, year)
+
+    filename = f"payslip_{emp.employee_code}_{month}_{year}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"inline; filename={filename}"},
+    )
+

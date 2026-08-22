@@ -3,7 +3,7 @@
 import enum
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Enum, String, func
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -72,10 +72,23 @@ class User(Base):
         nullable=False,
     )
 
+    company_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("companies.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     # back-reference to the employee record
     employee: Mapped["Employee"] = relationship(  # noqa: F821
         "Employee",
         back_populates="user",
         uselist=False,
+        lazy="select",
+    )
+
+    company: Mapped["Company | None"] = relationship(  # noqa: F821
+        "Company",
+        backref="users",
         lazy="select",
     )

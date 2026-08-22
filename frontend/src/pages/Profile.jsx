@@ -3,6 +3,7 @@ import { User, Phone, MapPin, Briefcase, Mail, CheckCircle2, ShieldAlert } from 
 import { DashboardLayout } from "../components/DashboardLayout";
 import { authService } from "../services/authService";
 import { employeeService } from "../services/employeeService";
+import { documentService } from "../services/documentService";
 import { InputField } from "../components/InputField";
 
 export const Profile = () => {
@@ -250,7 +251,172 @@ export const Profile = () => {
 
         </div>
 
+        {/* DOCUMENTS MANAGEMENT CARD */}
+        <div className="bg-surface-card border border-hairline rounded-lg p-6 text-left flex flex-col gap-5">
+          <div className="flex items-center justify-between border-b border-hairline pb-3">
+            <div className="flex flex-col">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-ink">
+                My Attached Documents
+              </span>
+              <span className="text-xs text-muted">Upload and manage your contracts, ID copies, and certificates.</span>
+            </div>
+          </div>
+
+          <ProfileDocumentsManager employeeId={profileData.id} />
+        </div>
+
       </div>
     </DashboardLayout>
+  );
+};
+
+// Sub-component for documents handling
+const ProfileDocumentsManager = ({ employeeId }) => {
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [docType, setDocType] = useState("ID_PROOF");
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [docError, setDocError] = useState("");
+  const [docSuccess, setDocSuccess] = useState("");
+
+  const loadDocuments = async () => {
+    if (!employeeId) return;
+    try {
+      setLoading(true);
+      const docs = await documentService.getByEmployee(employeeId);
+      setDocuments(docs || []);
+    } catch (err) {
+      console.warn("Could not load backend documents:", err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDocuments();
+  }, [employeeId]);
+
+  const handleUpload = async (e) => {
+    e.preventDefault();
+    if (!selectedFile) {
+      setDocError("Please select a file to upload.");
+      return;
+    }
+    setDocError("");
+    setDocSuccess("");
+    setUploading(true);
+
+    try {
+      await documentService.upload(employeeId, selectedFile, docType);
+      setDocSuccess("Document uploaded successfully!");
+      setSelectedFile(null);
+      await loadDocuments();
+    } catch (err) {
+      setDocError(err.message || "Failed to upload document.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDownload = async (docId, fileName) => {
+    try {
+      await documentService.download(docId, fileName);
+    } catch (err) {
+      alert("Failed to download document.");
+    }
+  };
+
+  const handleDelete = async (docId) => {
+    if (!window.confirm("Are you sure you want to delete this document?")) return;
+    try {
+      await documentService.delete(docId);
+      await loadDocuments();
+    } catch (err) {
+      alert("Failed to delete document.");
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Upload Form */}
+      <form onSubmit={handleUpload} className="bg-canvas border border-hairline rounded-md p-4 flex flex-col md:flex-row items-center gap-3">
+        <select
+          value={docType}
+          onChange={(e) => setDocType(e.target.value)}
+          className="rounded bg-surface-card border border-hairline px-3 py-2 text-xs font-semibold text-ink"
+        >
+          <option value="ID_PROOF">ID Proof</option>
+          <option value="CONTRACT">Contract</option>
+          <option value="CERTIFICATE">Certificate</option>
+          <option value="OTHER">Other Document</option>
+        </select>
+
+        <input
+          type="file"
+          id="profile_doc_file"
+          onChange={(e) => setSelectedFile(e.target.files[0] || null)}
+          className="text-xs text-body file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-surface-card file:text-ink hover:file:bg-canvas-soft flex-1"
+        />
+
+        <button
+          type="submit"
+          disabled={uploading || !selectedFile}
+          className="bg-primary hover:bg-primary-active text-white px-4 py-2 rounded text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1.5 shrink-0"
+        >
+          {uploading ? "Uploading..." : "Upload Document"}
+        </button>
+      </form>
+
+      {docError && <div className="text-xs text-semantic-error font-medium">{docError}</div>}
+      {docSuccess && <div className="text-xs text-emerald-600 font-medium">{docSuccess}</div>}
+
+      {/* Document List */}
+      {loading ? (
+        <div className="text-xs text-muted">Loading documents...</div>
+      ) : documents.length === 0 ? (
+        <div className="text-xs text-muted italic bg-canvas p-6 rounded text-center border border-hairline">
+          No documents attached yet. Use the uploader above to attach files.
+        </div>
+      ) : (
+        <div className="border border-hairline rounded-md overflow-hidden">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-canvas border-b border-hairline text-muted uppercase text-[10px] font-bold">
+              <tr>
+                <th className="p-3">Document Name</th>
+                <th className="p-3">Type</th>
+                <th className="p-3">Size</th>
+                <th className="p-3">Uploaded Date</th>
+                <th className="p-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-hairline">
+              {documents.map((d) => (
+                <tr key={d.id} className="hover:bg-canvas-soft">
+                  <td className="p-3 font-semibold text-ink">{d.document_name}</td>
+                  <td className="p-3"><span className="bg-canvas border border-hairline px-2 py-0.5 rounded text-[10px] font-bold">{d.document_type}</span></td>
+                  <td className="p-3 text-muted">{Math.round(d.file_size / 1024)} KB</td>
+                  <td className="p-3 text-muted">{new Date(d.uploaded_at).toLocaleDateString()}</td>
+                  <td className="p-3 text-right space-x-2">
+                    <button
+                      onClick={() => handleDownload(d.id, d.document_name)}
+                      className="text-primary hover:underline font-semibold"
+                    >
+                      Download
+                    </button>
+                    <button
+                      onClick={() => handleDelete(d.id)}
+                      className="text-semantic-error hover:underline font-semibold"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 };

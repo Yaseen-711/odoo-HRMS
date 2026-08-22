@@ -9,8 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.core.config import settings
 
 # ── Model imports for metadata registration ────────────────────────────────
+from app.models.company import Company  # noqa: F401
 from app.models.user import User  # noqa: F401
 from app.models.employee import Employee  # noqa: F401
+from app.models.document import Document  # noqa: F401
 from app.models.attendance import Attendance  # noqa: F401
 from app.models.leave import LeaveRequest  # noqa: F401
 from app.models.salary import SalaryStructure  # noqa: F401

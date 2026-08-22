@@ -22,3 +22,19 @@ class TokenPayload(BaseModel):
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
+
+
+class CompanySignup(BaseModel):
+    company_name: str
+    admin_name: str
+    email: str
+    phone: str | None = None
+    password: str
+
+
+class CompanySignupResponse(BaseModel):
+    success: bool = True
+    login_id: str
+    email: str
+    message: str = "Company registered successfully"
+

@@ -21,6 +21,7 @@ from app.api.attendance import router as attendance_router
 from app.api.leave import router as leave_router
 from app.api.payroll import router as payroll_router
 from app.api.dashboard import router as dashboard_router
+from app.api.documents import router as documents_router
 
 # ── Application ────────────────────────────────────────────────────────────
 app = FastAPI(
@@ -65,6 +66,7 @@ app.include_router(attendance_router, prefix=prefix)
 app.include_router(leave_router, prefix=prefix)
 app.include_router(payroll_router, prefix=prefix)
 app.include_router(dashboard_router, prefix=prefix)
+app.include_router(documents_router, prefix=prefix)
 
 
 @app.get("/health", tags=["Health"])

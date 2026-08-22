@@ -137,8 +137,35 @@ export const Attendance = () => {
       );
       await loadAttendanceData(currentUser);
     } catch (err) {
-      console.error(err);
-      setError("Failed to check out");
+    }
+  };
+
+  const handleExportCsv = async () => {
+    try {
+      const token = localStorage.getItem('dayflow_token');
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const response = await fetch('/api/attendance/export', {
+        method: 'GET',
+        headers: headers,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to export CSV report');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'attendance_report.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("CSV Export failed: " + err.message);
     }
   };
 
@@ -213,6 +240,14 @@ export const Attendance = () => {
                 Clock in/out or view historical working shifts and check-ins.
               </p>
             </div>
+            {currentUser?.role === "ADMIN" && (
+              <button
+                onClick={handleExportCsv}
+                className="px-4 py-2 bg-ink hover:bg-black text-white text-xs font-bold rounded-md transition-all flex items-center gap-1.5 self-start md:self-auto"
+              >
+                Export Report (CSV)
+              </button>
+            )}
           </div>
 
           {/* INTERACTIVE SHIFT WIDGET */}

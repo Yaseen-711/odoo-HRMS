@@ -75,3 +75,5 @@ uvloop==0.22.1
 watchfiles==1.1.1
 wcwidth==0.8.2
 websockets==16.0
+pillow==12.3.0
+reportlab==5.0.1

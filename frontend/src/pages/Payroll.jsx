@@ -48,6 +48,35 @@ export const Payroll = () => {
     }
   };
 
+  const handleDownloadPdf = async (empId, empCode) => {
+    try {
+      const token = localStorage.getItem('dayflow_token');
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const response = await fetch(`/api/payroll/${empId}/slip?month=8&year=2026`, {
+        method: 'GET',
+        headers: headers,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate payslip PDF');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `payslip_${empCode || empId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("Payslip PDF download failed: " + err.message);
+    }
+  };
+
   // Calculations
   const totalPayroll = employees.reduce((sum, emp) => sum + (emp.salary || 0), 0);
   const avgSalary = employees.length > 0 ? Math.round(totalPayroll / employees.length) : 0;
@@ -182,7 +211,13 @@ export const Payroll = () => {
                       <td className="py-3 px-4 font-mono text-xs text-ink">
                         ₹{(emp.salary || 0).toLocaleString()}
                       </td>
-                      <td className="py-3 px-4 text-right">
+                      <td className="py-3 px-4 text-right space-x-2">
+                        <button
+                          onClick={() => handleDownloadPdf(emp.id, emp.employee_id)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-primary hover:bg-primary-active border border-primary text-white rounded text-[11px] font-bold transition-all"
+                        >
+                          Download Payslip (PDF)
+                        </button>
                         <button
                           onClick={() => handleOpenAdjustModal(emp)}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-strong hover:bg-canvas border border-hairline-strong rounded text-[11px] font-bold text-ink transition-all"
