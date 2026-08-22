@@ -191,26 +191,7 @@ export const Login = () => {
             </button>
           </form>
 
-          {/* Quick seeded login tooltips for grading/evaluator ease */}
-          <div className="mt-4 p-4 bg-surface-card border border-hairline rounded-md flex flex-col gap-2.5 text-left">
-            <span className="text-[10px] uppercase tracking-wider font-bold text-muted">
-              Quick Sandbox Logins
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={() => prefillTestAccount("admin")}
-                className="flex-1 bg-canvas hover:bg-canvas-soft text-ink border border-hairline-strong py-1.5 px-2 rounded-md text-xs font-semibold transition-all"
-              >
-                Seed Admin
-              </button>
-              <button
-                onClick={() => prefillTestAccount("employee")}
-                className="flex-1 bg-canvas hover:bg-canvas-soft text-ink border border-hairline-strong py-1.5 px-2 rounded-md text-xs font-semibold transition-all"
-              >
-                Seed Employee
-              </button>
-            </div>
-          </div>
+
         </div>
 
         {/* Footer section */}
