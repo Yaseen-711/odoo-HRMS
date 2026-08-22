@@ -19,6 +19,7 @@ export const Settings = () => {
   const [pwdForm, setPwdForm] = useState({ current: "", new: "", confirm: "" });
   const [pwdError, setPwdError] = useState("");
   const [pwdSuccess, setPwdSuccess] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     const user = authService.getCurrentUser();
@@ -74,11 +75,14 @@ export const Settings = () => {
     }
 
     try {
+      setIsUpdating(true);
       await authService.changePassword(pwdForm.current, pwdForm.new);
       setPwdSuccess("Your workspace password has been updated.");
       setPwdForm({ current: "", new: "", confirm: "" });
     } catch (err) {
       setPwdError(err.message || "Failed to update password.");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -239,9 +243,10 @@ export const Settings = () => {
 
               <button
                 type="submit"
-                className="w-full bg-primary hover:bg-primary-active text-white font-bold py-2.5 rounded-md text-xs transition-all mt-2"
+                disabled={isUpdating}
+                className={`w-full ${isUpdating ? "bg-primary/70 cursor-not-allowed" : "bg-primary hover:bg-primary-active"} text-white font-bold py-2.5 rounded-md text-xs transition-all mt-2`}
               >
-                Change Workspace Password
+                {isUpdating ? "Updating..." : "Change Workspace Password"}
               </button>
             </form>
           </div>

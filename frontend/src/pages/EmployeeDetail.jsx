@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, Shield, User, Clock } from "lucide-react";
 import { DashboardLayout } from "../components/DashboardLayout";
-import { employeeRepository } from "../data/employees";
+import { employeeService } from "../services/employeeService";
 import { leaveRepository } from "../data/leave";
 
 export const EmployeeDetail = () => {
@@ -11,23 +11,50 @@ export const EmployeeDetail = () => {
 
   const [employee, setEmployee] = useState(null);
   const [leaveBalances, setLeaveBalances] = useState({ PAID: 15, SICK: 8, UNPAID: 10 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const record = employeeRepository.getById(id);
-    if (record) {
-      setEmployee(record);
-      // Fetch leave balances for this employee
-      const balances = leaveRepository.getBalances(record.employee_id);
-      setLeaveBalances(balances);
-    }
+    const fetchEmployee = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const record = await employeeService.getById(id);
+        if (record) {
+          setEmployee(record);
+          // Fetch leave balances for this employee using frontend-only data
+          const balances = leaveRepository.getBalances(record.employee_id);
+          setLeaveBalances(balances);
+        } else {
+          setEmployee(null);
+        }
+      } catch (err) {
+        console.error("Failed to load employee:", err);
+        setError("An error occurred while fetching employee details.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchEmployee();
   }, [id]);
 
-  if (!employee) {
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <p className="text-sm font-medium text-muted">Loading employee details...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error || !employee) {
     return (
       <DashboardLayout>
         <div className="bg-surface-card border border-hairline rounded-lg p-16 text-center max-w-xl mx-auto flex flex-col items-center justify-center gap-4">
           <span className="text-sm font-semibold text-ink">Employee Profile Not Found</span>
-          <p className="text-xs text-muted">The employee identifier could not be verified in the directory.</p>
+          <p className="text-xs text-muted">{error || "The employee identifier could not be verified in the directory."}</p>
           <Link
             to="/employees"
             className="px-4 py-2 bg-ink hover:bg-black text-white text-xs font-bold rounded-md transition-all"

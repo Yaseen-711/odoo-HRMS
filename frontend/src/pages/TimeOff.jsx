@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Calendar, Plus, X, Check, HelpCircle, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { DashboardLayout } from "../components/DashboardLayout";
 import { authService } from "../services/authService";
+import { leaveService } from "../services/leaveService";
 import { employeeRepository } from "../data/employees";
 import { leaveRepository } from "../data/leave";
 import { notificationRepository } from "../data/notifications";
@@ -14,6 +15,8 @@ export const TimeOff = () => {
   // Leave data
   const [requests, setRequests] = useState([]);
   const [balances, setBalances] = useState({ PAID: 0, SICK: 0, UNPAID: 0 });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
   // Modal State
   const [showRequestModal, setShowRequestModal] = useState(false);
@@ -24,6 +27,7 @@ export const TimeOff = () => {
     remarks: ""
   });
   const [formError, setFormError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const user = authService.getCurrentUser();
@@ -34,20 +38,24 @@ export const TimeOff = () => {
     }
   }, []);
 
-  const loadLeaveData = (user) => {
-    let list = [];
-    if (user.role === "ADMIN") {
-      list = leaveRepository.getAll();
-    } else {
-      list = leaveRepository.getByEmployee(user.login_id);
-    }
-    setRequests(list);
+  const loadLeaveData = async (user) => {
+    setIsLoading(true);
+    setError("");
+    try {
+      const list = await leaveService.getAll();
+      setRequests(list);
 
-    const empId = user.role === "ADMIN" ? "EMP-0001" : user.login_id;
-    setBalances(leaveRepository.getBalances(empId));
+      const empId = user.role === "ADMIN" ? "EMP-0001" : user.login_id;
+      setBalances(leaveRepository.getBalances(empId));
+    } catch (err) {
+      console.error("Error loading leave data", err);
+      setError("Failed to load leave data. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleRequestSubmit = (e) => {
+  const handleRequestSubmit = async (e) => {
     e.preventDefault();
     setFormError("");
 
@@ -64,37 +72,49 @@ export const TimeOff = () => {
     }
 
     if (!currentUser) return;
-    const empId = currentUser.role === "ADMIN" ? "EMP-0001" : currentUser.login_id;
     
-    leaveRepository.submit(empId, leaveForm);
+    setIsSubmitting(true);
+    try {
+      await leaveService.create(leaveForm);
 
-    notificationRepository.add(
-      "Leave Requested",
-      `${currentUser.name} requested leave: ${leaveForm.leave_type} (${leaveForm.start_date} to ${leaveForm.end_date})`,
-      "leave"
-    );
+      notificationRepository.add(
+        "Leave Requested",
+        `${currentUser.name} requested leave: ${leaveForm.leave_type} (${leaveForm.start_date} to ${leaveForm.end_date})`,
+        "leave"
+      );
 
-    // Close and reload
-    setShowRequestModal(false);
-    loadLeaveData(currentUser);
+      // Close and reload
+      setShowRequestModal(false);
+      loadLeaveData(currentUser);
+    } catch (err) {
+      console.error("Error submitting leave request", err);
+      setFormError("Failed to submit leave request. Please check the details and try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleDecideLeave = (id, status) => {
-    leaveRepository.decide(id, status);
-    
-    // Add notification
-    const request = leaveRepository.getAll().find(l => l.id === Number(id));
-    const requester = employees.find(e => e.employee_id === request?.employee_id);
-    const requesterName = requester ? `${requester.first_name} ${requester.last_name}` : "Employee";
-    
-    notificationRepository.add(
-      `Leave Request ${status}`,
-      `Leave request from ${requesterName} has been ${status.toLowerCase()}.`,
-      "leave"
-    );
+  const handleDecideLeave = async (id, status) => {
+    try {
+      await leaveService.decide(id, status);
+      
+      // Add notification
+      const request = requests.find(l => l.id === Number(id));
+      const requester = employees.find(e => e.employee_id === request?.employee_id);
+      const requesterName = requester ? `${requester.first_name} ${requester.last_name}` : "Employee";
+      
+      notificationRepository.add(
+        `Leave Request ${status}`,
+        `Leave request from ${requesterName} has been ${status.toLowerCase()}.`,
+        "leave"
+      );
 
-    if (currentUser) {
-      loadLeaveData(currentUser);
+      if (currentUser) {
+        loadLeaveData(currentUser);
+      }
+    } catch (err) {
+      console.error("Error updating leave request", err);
+      setError("Failed to update leave request. Please try again.");
     }
   };
 
@@ -134,6 +154,12 @@ export const TimeOff = () => {
           </button>
         </div>
 
+        {error && (
+          <div className="bg-red-500/5 border border-semantic-error/30 rounded-md p-3 text-sm text-semantic-error">
+            {error}
+          </div>
+        )}
+
         {/* SUMMARY CARDS */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Card 1 */}
@@ -168,7 +194,11 @@ export const TimeOff = () => {
             {currentUser?.role === "ADMIN" ? "Company Leave Directory" : "Your Absence Logs"}
           </span>
 
-          {requests.length === 0 ? (
+          {isLoading ? (
+            <div className="py-12 text-center text-xs text-muted">
+              Loading leave requests...
+            </div>
+          ) : requests.length === 0 ? (
             <div className="py-12 text-center text-xs text-muted">
               No leave requests registered.
             </div>
@@ -269,6 +299,7 @@ export const TimeOff = () => {
               <button
                 onClick={() => setShowRequestModal(false)}
                 className="p-1 rounded hover:bg-canvas-soft border border-hairline text-muted hover:text-ink"
+                disabled={isSubmitting}
               >
                 <X size={16} />
               </button>
@@ -289,7 +320,8 @@ export const TimeOff = () => {
                 <select
                   value={leaveForm.leave_type}
                   onChange={(e) => setLeaveForm(prev => ({ ...prev, leave_type: e.target.value }))}
-                  className="w-full rounded-md bg-surface-card border border-hairline-strong px-4 py-2.5 text-sm text-ink focus:outline-none focus:border-primary"
+                  disabled={isSubmitting}
+                  className="w-full rounded-md bg-surface-card border border-hairline-strong px-4 py-2.5 text-sm text-ink focus:outline-none focus:border-primary disabled:opacity-50"
                 >
                   <option value="PAID">PAID - Personal Annual Leave</option>
                   <option value="SICK">SICK - Medical Health Absence</option>
@@ -304,6 +336,7 @@ export const TimeOff = () => {
                 value={leaveForm.start_date}
                 onChange={(e) => setLeaveForm(prev => ({ ...prev, start_date: e.target.value }))}
                 required
+                disabled={isSubmitting}
               />
 
               <InputField
@@ -313,6 +346,7 @@ export const TimeOff = () => {
                 value={leaveForm.end_date}
                 onChange={(e) => setLeaveForm(prev => ({ ...prev, end_date: e.target.value }))}
                 required
+                disabled={isSubmitting}
               />
 
               <div className="flex flex-col gap-1.5">
@@ -324,15 +358,17 @@ export const TimeOff = () => {
                   value={leaveForm.remarks}
                   onChange={(e) => setLeaveForm(prev => ({ ...prev, remarks: e.target.value }))}
                   rows={3}
-                  className="w-full rounded-md bg-surface-card border border-hairline-strong px-4 py-2.5 text-sm text-ink focus:outline-none focus:border-primary placeholder-muted-soft"
+                  disabled={isSubmitting}
+                  className="w-full rounded-md bg-surface-card border border-hairline-strong px-4 py-2.5 text-sm text-ink focus:outline-none focus:border-primary placeholder-muted-soft disabled:opacity-50"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-primary hover:bg-primary-active text-white font-bold py-2.5 rounded-md text-xs transition-all mt-2"
+                disabled={isSubmitting}
+                className="w-full bg-primary hover:bg-primary-active text-white font-bold py-2.5 rounded-md text-xs transition-all mt-2 disabled:opacity-50"
               >
-                Submit Application
+                {isSubmitting ? "Submitting..." : "Submit Application"}
               </button>
             </form>
           </div>

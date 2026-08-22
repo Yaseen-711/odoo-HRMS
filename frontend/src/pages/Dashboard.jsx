@@ -18,10 +18,13 @@ import {
   Zap,
   CalendarDays,
   Send,
-  Search
+  Search,
+  Loader2
 } from "lucide-react";
 import { DashboardLayout } from "../components/DashboardLayout";
 import { authService } from "../services/authService";
+import { dashboardService } from "../services/dashboardService";
+import { attendanceService } from "../services/attendanceService";
 import { employeeRepository } from "../data/employees";
 import { attendanceRepository } from "../data/attendance";
 import { leaveRepository } from "../data/leave";
@@ -33,6 +36,9 @@ export const Dashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [currentUser, setCurrentUser] = useState(null);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Stats
   const [stats, setStats] = useState({
@@ -88,7 +94,26 @@ export const Dashboard = () => {
 
   // Handle active session timing clock increments
   useEffect(() => {
-    if (todayAttendance.check_in && todayAttendance.check_in !== "--" && todayAttendance.check_out === "--") {
+    if (timerIntervalId) clearInterval(timerIntervalId);
+    
+    if (todayAttendance.raw_check_in && !todayAttendance.raw_check_out) {
+      const checkInDate = new Date(todayAttendance.raw_check_in);
+
+      const interval = setInterval(() => {
+        const diffMs = new Date() - checkInDate;
+        if (diffMs > 0) {
+          const diffHrs = Math.floor(diffMs / 3600000);
+          const diffMins = Math.floor((diffMs % 3600000) / 60000);
+          const diffSecs = Math.floor((diffMs % 60000) / 1000);
+          setElapsedTime(
+            `${String(diffHrs).padStart(2, "0")}:${String(diffMins).padStart(2, "0")}:${String(diffSecs).padStart(2, "0")}`
+          );
+        }
+      }, 1000);
+
+      setTimerIntervalId(interval);
+      return () => clearInterval(interval);
+    } else if (todayAttendance.check_in && todayAttendance.check_in !== "--" && todayAttendance.check_out === "--" && !todayAttendance.raw_check_in) {
       const [timeStr, ampm] = todayAttendance.check_in.split(" ");
       let [hours, minutes] = timeStr.split(":").map(Number);
       if (ampm === "PM" && hours !== 12) hours += 12;
@@ -114,76 +139,95 @@ export const Dashboard = () => {
     } else {
       setElapsedTime("00:00:00");
     }
-  }, [todayAttendance.check_in, todayAttendance.check_out]);
+  }, [todayAttendance]);
 
-  const loadDashboardData = (user) => {
-    const emps = employeeRepository.getAll();
-    const total = emps.length;
-    const present = emps.filter(e => e.status === "Present").length;
-    const leave = emps.filter(e => e.status === "On Leave").length;
-    const absent = emps.filter(e => e.status === "Absent").length;
-    setStats({ total, present, leave, absent });
+  const loadDashboardData = async (user) => {
+    try {
+      setLoading(true);
+      setError(null);
 
-    const empId = user.role === "ADMIN" ? "EMP-0001" : user.login_id;
-    const today = attendanceRepository.getTodayStatus(empId);
-    setTodayAttendance(today);
+      const summary = await dashboardService.getSummary();
+      if (summary.todayAttendance) {
+        setTodayAttendance(summary.todayAttendance);
+      }
 
-    // Merge check-in/out & leave logs
-    const mockAttendance = attendanceRepository.getAll();
-    const mockLeaves = leaveRepository.getAll();
-    const merged = [
-      ...mockAttendance.map(a => {
-        const matchedEmp = emps.find(e => e.employee_id === a.employee_id);
-        return {
-          type: "attendance",
-          title: a.check_out !== "--" ? "Checked Out" : "Checked In",
-          statusPill: a.check_out !== "--" ? "bg-secondary text-white" : "bg-white text-ink",
-          name: matchedEmp ? `${matchedEmp.first_name} ${matchedEmp.last_name}` : "Unknown Staff",
-          email: matchedEmp ? matchedEmp.email : "staff@dayflow.com",
-          avatar: matchedEmp ? matchedEmp.profile_picture : "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80",
-          meta: a.check_out !== "--" ? `Completed shift duration: ${a.duration}` : `Active shift initialized at ${a.check_in}`,
-          time: "Today"
-        };
-      }),
-      ...mockLeaves.map(l => {
-        const matchedEmp = emps.find(e => e.employee_id === l.employee_id);
-        return {
-          type: "leave",
-          title: `Leave ${l.status}`,
-          statusPill: l.status === "APPROVED" ? "bg-emerald-500 text-white" : "bg-primary text-white",
-          name: matchedEmp ? `${matchedEmp.first_name} ${matchedEmp.last_name}` : "Unknown Staff",
-          email: matchedEmp ? matchedEmp.email : "staff@dayflow.com",
-          avatar: matchedEmp ? matchedEmp.profile_picture : "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80",
-          meta: `${l.leave_type} Leave: ${l.start_date} to ${l.end_date}`,
-          time: "Recently"
-        };
-      })
-    ];
-    setRecentActivities(merged.slice(0, 3));
+      const emps = employeeRepository.getAll();
+      const total = emps.length;
+      const present = emps.filter(e => e.status === "Present").length;
+      const leave = emps.filter(e => e.status === "On Leave").length;
+      const absent = emps.filter(e => e.status === "Absent").length;
+      setStats({ total, present, leave, absent });
+
+      // Merge check-in/out & leave logs
+      const mockAttendance = attendanceRepository.getAll();
+      const mockLeaves = leaveRepository.getAll();
+      const merged = [
+        ...mockAttendance.map(a => {
+          const matchedEmp = emps.find(e => e.employee_id === a.employee_id);
+          return {
+            type: "attendance",
+            title: a.check_out !== "--" ? "Checked Out" : "Checked In",
+            statusPill: a.check_out !== "--" ? "bg-secondary text-white" : "bg-white text-ink",
+            name: matchedEmp ? `${matchedEmp.first_name} ${matchedEmp.last_name}` : "Unknown Staff",
+            email: matchedEmp ? matchedEmp.email : "staff@dayflow.com",
+            avatar: matchedEmp ? matchedEmp.profile_picture : "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80",
+            meta: a.check_out !== "--" ? `Completed shift duration: ${a.duration}` : `Active shift initialized at ${a.check_in}`,
+            time: "Today"
+          };
+        }),
+        ...mockLeaves.map(l => {
+          const matchedEmp = emps.find(e => e.employee_id === l.employee_id);
+          return {
+            type: "leave",
+            title: `Leave ${l.status}`,
+            statusPill: l.status === "APPROVED" ? "bg-emerald-500 text-white" : "bg-primary text-white",
+            name: matchedEmp ? `${matchedEmp.first_name} ${matchedEmp.last_name}` : "Unknown Staff",
+            email: matchedEmp ? matchedEmp.email : "staff@dayflow.com",
+            avatar: matchedEmp ? matchedEmp.profile_picture : "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80",
+            meta: `${l.leave_type} Leave: ${l.start_date} to ${l.end_date}`,
+            time: "Recently"
+          };
+        })
+      ];
+      setRecentActivities(merged.slice(0, 3));
+    } catch (err) {
+      setError("Failed to load dashboard data.");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleCheckIn = () => {
+  const handleCheckIn = async () => {
     if (!currentUser) return;
-    const empId = currentUser.role === "ADMIN" ? "EMP-0001" : currentUser.login_id;
-    attendanceRepository.checkIn(empId);
-    notificationRepository.add(
-      "Clock-in Registered",
-      `${currentUser.name} registered shift check-in.`,
-      "attendance"
-    );
-    loadDashboardData(currentUser);
+    try {
+      await attendanceService.checkIn();
+      notificationRepository.add(
+        "Clock-in Registered",
+        `${currentUser.name} registered shift check-in.`,
+        "attendance"
+      );
+      loadDashboardData(currentUser);
+    } catch (err) {
+      console.error(err);
+      notificationRepository.add("Error", "Failed to check in.", "error");
+    }
   };
 
-  const handleCheckOut = () => {
+  const handleCheckOut = async () => {
     if (!currentUser) return;
-    const empId = currentUser.role === "ADMIN" ? "EMP-0001" : currentUser.login_id;
-    attendanceRepository.checkOut(empId);
-    notificationRepository.add(
-      "Clock-out Registered",
-      `${currentUser.name} completed workspace shift.`,
-      "attendance"
-    );
-    loadDashboardData(currentUser);
+    try {
+      await attendanceService.checkOut();
+      notificationRepository.add(
+        "Clock-out Registered",
+        `${currentUser.name} completed workspace shift.`,
+        "attendance"
+      );
+      loadDashboardData(currentUser);
+    } catch (err) {
+      console.error(err);
+      notificationRepository.add("Error", "Failed to check out.", "error");
+    }
   };
 
   const handlePasswordChangeSubmit = async (e) => {
@@ -232,6 +276,15 @@ export const Dashboard = () => {
 
   return (
     <DashboardLayout>
+      {loading ? (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="animate-spin text-primary w-8 h-8" />
+        </div>
+      ) : error ? (
+        <div className="bg-red-50 text-red-500 p-4 rounded-md flex items-center justify-center h-64">
+          {error}
+        </div>
+      ) : (
       <div className="flex flex-col gap-6 md:gap-8 max-w-7xl mx-auto text-left">
         
         {/* RESQ STYLE HEADER GREETING ROW */}
@@ -600,6 +653,7 @@ export const Dashboard = () => {
         </div>
 
       </div>
+      )}
 
       {/* FORCE CHANGE PASSWORD DIALOG MODAL */}
       {showPasswordModal && (
@@ -671,3 +725,4 @@ export const Dashboard = () => {
     </DashboardLayout>
   );
 };
+

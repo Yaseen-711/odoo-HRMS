@@ -62,7 +62,7 @@ export const Login = () => {
     try {
       const response = await authService.login(identifier, password);
       // If the user must change password (seeded employee account), we handle it
-      if (response.user.must_change_password) {
+      if (response.user?.must_change_password) {
         navigate("/dashboard?change_password=true");
       } else {
         navigate("/dashboard");

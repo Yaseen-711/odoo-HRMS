@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Plus, Search, Filter, Mail, Phone, ChevronRight, X, Sparkles, CheckCircle2, Copy, Check } from "lucide-react";
 import { DashboardLayout } from "../components/DashboardLayout";
 import { authService } from "../services/authService";
-import { employeeRepository } from "../data/employees";
+import { employeeService } from "../services/employeeService";
 import { InputField } from "../components/InputField";
 
 export const Employees = () => {
@@ -12,6 +12,8 @@ export const Employees = () => {
   
   // Lists
   const [employees, setEmployees] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDept, setSelectedDept] = useState("All");
 
@@ -32,6 +34,19 @@ export const Employees = () => {
   const [onboardResult, setOnboardResult] = useState(null);
   const [copied, setCopied] = useState(false);
 
+  const fetchEmployees = async () => {
+    setIsLoading(true);
+    setError("");
+    try {
+      const data = await employeeService.getAll();
+      setEmployees(data);
+    } catch (err) {
+      setError(err.message || "Failed to load employees.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     const user = authService.getCurrentUser();
     if (!user) {
@@ -39,14 +54,14 @@ export const Employees = () => {
       return;
     }
     setCurrentUser(user);
-    setEmployees(employeeRepository.getAll());
+    fetchEmployees();
   }, [navigate]);
 
   const handleSearch = (term) => {
     setSearchTerm(term);
   };
 
-  const handleOnboardSubmit = (e) => {
+  const handleOnboardSubmit = async (e) => {
     e.preventDefault();
     setOnboardError("");
     
@@ -56,11 +71,11 @@ export const Employees = () => {
     }
 
     try {
-      const result = employeeRepository.create(onboardForm);
+      const result = await employeeService.create(onboardForm);
       setOnboardResult(result);
       
       // Refresh list
-      setEmployees(employeeRepository.getAll());
+      await fetchEmployees();
     } catch (err) {
       setOnboardError(err.message || "Failed to onboard new employee.");
     }
@@ -68,7 +83,7 @@ export const Employees = () => {
 
   const handleCopyCredentials = () => {
     if (onboardResult) {
-      const text = `Login ID: ${onboardResult.loginId}\nTemp Password: ${onboardResult.temporaryPassword}`;
+      const text = `Login ID: ${onboardResult.login_id}\nTemp Password: ${onboardResult.temporary_password}`;
       navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -80,9 +95,9 @@ export const Employees = () => {
   // Filter logic
   const filteredEmployees = employees.filter((emp) => {
     const matchesSearch = 
-      `${emp.first_name} ${emp.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.employee_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.job_position.toLowerCase().includes(searchTerm.toLowerCase());
+      `${emp.first_name || ""} ${emp.last_name || ""}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (emp.employee_id || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (emp.job_position || "").toLowerCase().includes(searchTerm.toLowerCase());
       
     const matchesDept = selectedDept === "All" || emp.department === selectedDept;
 
@@ -152,7 +167,15 @@ export const Employees = () => {
         </div>
 
         {/* DIRECTORY GRID */}
-        {filteredEmployees.length === 0 ? (
+        {isLoading ? (
+          <div className="flex justify-center p-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        ) : error ? (
+          <div className="bg-red-500/5 border border-semantic-error/30 rounded-lg p-8 text-center text-semantic-error">
+            {error}
+          </div>
+        ) : filteredEmployees.length === 0 ? (
           <div className="bg-surface-card border border-hairline rounded-lg p-16 flex flex-col items-center justify-center text-center">
             <span className="text-sm font-semibold text-ink">No employees found</span>
             <p className="text-xs text-muted mt-1">Try adjusting your filters or search keywords.</p>
@@ -172,16 +195,18 @@ export const Employees = () => {
                       ? "bg-emerald-500"
                       : emp.status === "On Leave"
                       ? "bg-blue-500"
-                      : "bg-amber-500"
+                      : emp.status
+                      ? "bg-amber-500"
+                      : "bg-gray-300"
                   }`}></span>
-                  <span className="text-[10px] font-semibold text-muted tracking-wide">{emp.status}</span>
+                  <span className="text-[10px] font-semibold text-muted tracking-wide">{emp.status || "Unknown"}</span>
                 </div>
 
                 <div className="flex items-start gap-4">
                   <img
-                    src={emp.profile_picture}
+                    src={emp.profile_picture || "https://ui-avatars.com/api/?name=" + encodeURIComponent(emp.first_name + " " + emp.last_name)}
                     alt={`${emp.first_name} ${emp.last_name}`}
-                    className="w-14 h-14 rounded-md object-cover border border-hairline"
+                    className="w-14 h-14 rounded-md object-cover border border-hairline bg-canvas-soft"
                   />
                   <div className="flex flex-col overflow-hidden">
                     <span className="text-base font-semibold text-ink group-hover:text-primary transition-colors truncate">
@@ -346,11 +371,11 @@ export const Employees = () => {
                 <div className="bg-canvas border border-hairline rounded-md p-4 flex flex-col gap-2.5 text-left text-sm font-mono relative">
                   <div>
                     <span className="text-[10px] uppercase font-bold text-muted block mb-0.5">Temporary Login ID</span>
-                    <span className="text-ink font-bold font-mono tracking-wider">{onboardResult.loginId}</span>
+                    <span className="text-ink font-bold font-mono tracking-wider">{onboardResult.login_id}</span>
                   </div>
                   <div className="border-t border-hairline-soft pt-2">
                     <span className="text-[10px] uppercase font-bold text-muted block mb-0.5">Temporary Password</span>
-                    <span className="text-ink font-bold font-mono tracking-wider">{onboardResult.temporaryPassword}</span>
+                    <span className="text-ink font-bold font-mono tracking-wider">{onboardResult.temporary_password}</span>
                   </div>
 
                   <button

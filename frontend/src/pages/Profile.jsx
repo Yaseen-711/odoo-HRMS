@@ -2,12 +2,13 @@ import React, { useState, useEffect } from "react";
 import { User, Phone, MapPin, Briefcase, Mail, CheckCircle2, ShieldAlert } from "lucide-react";
 import { DashboardLayout } from "../components/DashboardLayout";
 import { authService } from "../services/authService";
-import { employeeRepository } from "../data/employees";
+import { employeeService } from "../services/employeeService";
 import { InputField } from "../components/InputField";
 
 export const Profile = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [profileData, setProfileData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Form edit states
   const [editMode, setEditMode] = useState(false);
@@ -17,33 +18,46 @@ export const Profile = () => {
   const [success, setSuccess] = useState("");
 
   useEffect(() => {
-    const user = authService.getCurrentUser();
-    if (user) {
-      setCurrentUser(user);
-      
-      // Look up corresponding employee details (Admins map to EMP-0001)
-      const empId = user.role === "ADMIN" ? "EMP-0001" : user.login_id;
-      const details = employeeRepository.getById(empId);
-      if (details) {
-        setProfileData(details);
-        setPhone(details.phone || "");
-        setAddress(details.address || "");
+    const fetchProfile = async () => {
+      try {
+        setIsLoading(true);
+        const user = authService.getCurrentUser();
+        if (user) {
+          setCurrentUser(user);
+          const details = await employeeService.getMyProfile();
+          if (details) {
+            setProfileData(details);
+            setPhone(details.phone || "");
+            setAddress(details.address || "");
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch profile", err);
+      } finally {
+        setIsLoading(false);
       }
-    }
+    };
+    fetchProfile();
   }, []);
 
-  const handleUpdateContact = (e) => {
+  const handleUpdateContact = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
 
     if (profileData) {
       try {
-        const updated = employeeRepository.update(profileData.employee_id, {
+        const updated = await employeeService.updateMyProfile({
           phone,
           address
         });
-        setProfileData(updated);
+        
+        // Refresh profile data
+        const details = await employeeService.getMyProfile();
+        setProfileData(details);
+        setPhone(details.phone || "");
+        setAddress(details.address || "");
+        
         setSuccess("Contact information updated successfully.");
         setEditMode(false);
       } catch (err) {
@@ -51,6 +65,16 @@ export const Profile = () => {
       }
     }
   };
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <p className="text-muted text-sm">Loading profile data...</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (!profileData) return null;
 
@@ -72,7 +96,7 @@ export const Profile = () => {
         <div className="bg-surface-card border border-hairline rounded-lg p-6 md:p-8 flex flex-col md:flex-row items-center md:items-start justify-between gap-6">
           <div className="flex flex-col md:flex-row items-center md:items-start gap-5">
             <img
-              src={profileData.profile_picture}
+              src={profileData.profile_picture || "https://ui-avatars.com/api/?name=" + profileData.first_name + "+" + profileData.last_name}
               alt="Profile Avatar"
               className="w-24 h-24 rounded-lg object-cover border border-hairline"
             />

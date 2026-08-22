@@ -1,112 +1,85 @@
 /**
  * Authentication service for Dayflow HRMS.
- * Currently simulates interaction with the FastAPI backend.
- * Stored credentials and active user sessions are persisted in localStorage.
+ * Login and change-password use the real backend API.
+ * Signup and forgot-password remain frontend-only (no backend endpoints).
  */
+
+import { apiClient } from './apiClient';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Pre-seeded accounts in localStorage if not already present
-const initMockDB = () => {
-  const users = localStorage.getItem("dayflow_users");
-  if (!users) {
-    const seedUsers = [
-      {
-        id: 1,
-        login_id: "ADMIN-0001",
-        email: "admin@dayflow.com",
-        name: "Yaseen HR Admin",
-        phone: "+919876543210",
-        company_name: "Dayflow Corp",
-        role: "ADMIN",
-        must_change_password: false,
-        password: "password", // In a real DB this would be hashed
-      },
-      {
-        id: 2,
-        login_id: "EMP-0001",
-        email: "employee@dayflow.com",
-        name: "John Doe",
-        phone: "+919876543211",
-        company_name: "Dayflow Corp",
-        role: "EMPLOYEE",
-        must_change_password: true, // Forces password change on first login
-        password: "password",
-      }
-    ];
-    localStorage.setItem("dayflow_users", JSON.stringify(seedUsers));
-  }
-};
-
-initMockDB();
-
 export const authService = {
   /**
-   * Log in a user using login_id or email and password
+   * Log in a user using login_id or email and password.
+   * Calls POST /api/auth/login, then GET /api/auth/me for user details.
    */
   login: async (identifier, password) => {
-    await delay(1000); // Simulate network latency
+    // Call real backend login endpoint
+    const tokenData = await apiClient.post('/auth/login', {
+      login_id: identifier,
+      password: password,
+    });
 
-    const users = JSON.parse(localStorage.getItem("dayflow_users") || "[]");
-    const user = users.find(
-      (u) => (u.login_id === identifier || u.email === identifier)
-    );
+    // Store the JWT token
+    localStorage.setItem('dayflow_token', tokenData.access_token);
 
-    if (!user) {
-      throw new Error("Invalid credentials. User not found.");
+    // Fetch user profile using the token
+    const userProfile = await apiClient.get('/auth/me');
+
+    // Build user object matching the format the frontend expects
+    const user = {
+      id: userProfile.id,
+      login_id: userProfile.login_id,
+      email: userProfile.email,
+      name: userProfile.login_id, // Default name to login_id; will be enriched below
+      role: userProfile.role,
+      must_change_password: userProfile.must_change_password,
+    };
+
+    // Try to fetch employee profile for a richer name
+    try {
+      const empProfile = await apiClient.get('/employees/me');
+      user.name = `${empProfile.first_name} ${empProfile.last_name}`;
+      if (empProfile.phone) user.phone = empProfile.phone;
+      if (empProfile.company) user.company_name = empProfile.company;
+      if (empProfile.profile_picture) user.profile_picture = empProfile.profile_picture;
+      if (empProfile.id) user.employee_id = empProfile.id;
+      if (empProfile.employee_code) user.employee_code = empProfile.employee_code;
+    } catch {
+      // Employee profile may not exist for some users — that's fine
     }
 
-    if (user.password !== password) {
-      throw new Error("Invalid credentials. Incorrect password.");
-    }
-
-    // Generate a mock JWT token containing user details
-    const token = btoa(JSON.stringify({ user_id: user.id, role: user.role, email: user.email }));
-    
     // Save current session
-    localStorage.setItem("dayflow_token", token);
-    localStorage.setItem("dayflow_current_user", JSON.stringify({
-      id: user.id,
-      login_id: user.login_id,
-      email: user.email,
-      name: user.name,
-      phone: user.phone,
-      company_name: user.company_name,
-      role: user.role,
-      must_change_password: user.must_change_password
-    }));
+    localStorage.setItem('dayflow_current_user', JSON.stringify(user));
 
     return {
-      access_token: token,
-      token_type: "bearer",
-      user: {
-        id: user.id,
-        login_id: user.login_id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        must_change_password: user.must_change_password
-      }
+      access_token: tokenData.access_token,
+      token_type: tokenData.token_type,
+      user: user,
     };
   },
 
   /**
-   * Register a new company and create the initial Admin/HR user
+   * Register a new company and create the initial Admin/HR user.
+   * FRONTEND-ONLY — no backend signup endpoint exists.
    */
   signup: async (signupData) => {
     await delay(1200);
 
     const { company_name, admin_name, email, phone, password } = signupData;
-    const users = JSON.parse(localStorage.getItem("dayflow_users") || "[]");
+    const users = JSON.parse(localStorage.getItem('dayflow_users') || '[]');
 
     // Check if email already exists
-    const emailExists = users.some((u) => u.email.toLowerCase() === email.toLowerCase());
+    const emailExists = users.some(
+      (u) => u.email.toLowerCase() === email.toLowerCase()
+    );
     if (emailExists) {
-      throw new Error("An account with this email address already exists.");
+      throw new Error('An account with this email address already exists.');
     }
 
-    const nextId = users.length > 0 ? Math.max(...users.map((u) => u.id)) + 1 : 1;
-    const seqString = String(nextId).padStart(4, "0");
+    const nextId =
+      users.length > 0 ? Math.max(...users.map((u) => u.id)) + 1 : 1;
+    const seqString = String(nextId).padStart(4, '0');
     const loginId = `ADMIN-${seqString}`;
 
     const newAdmin = {
@@ -116,93 +89,74 @@ export const authService = {
       name: admin_name,
       phone,
       company_name,
-      role: "ADMIN",
+      role: 'ADMIN',
       must_change_password: false,
       password: password,
     };
 
     users.push(newAdmin);
-    localStorage.setItem("dayflow_users", JSON.stringify(users));
+    localStorage.setItem('dayflow_users', JSON.stringify(users));
 
     return {
       success: true,
       login_id: loginId,
       email: email,
-      message: "Company registered successfully."
+      message: 'Company registered successfully.',
     };
   },
 
   /**
-   * Let the current user change their password
+   * Let the current user change their password.
+   * Calls POST /api/auth/change-password.
    */
   changePassword: async (currentPassword, newPassword) => {
-    await delay(800);
-    const currentUser = JSON.parse(localStorage.getItem("dayflow_current_user"));
-    if (!currentUser) {
-      throw new Error("No active session found.");
+    await apiClient.post('/auth/change-password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
+
+    // Update local session to reflect password change
+    const currentUser = JSON.parse(
+      localStorage.getItem('dayflow_current_user')
+    );
+    if (currentUser) {
+      currentUser.must_change_password = false;
+      localStorage.setItem(
+        'dayflow_current_user',
+        JSON.stringify(currentUser)
+      );
     }
-
-    const users = JSON.parse(localStorage.getItem("dayflow_users") || "[]");
-    const userIndex = users.findIndex((u) => u.id === currentUser.id);
-
-    if (userIndex === -1) {
-      throw new Error("User record not found in database.");
-    }
-
-    const user = users[userIndex];
-    if (user.password !== currentPassword) {
-      throw new Error("Current password is incorrect.");
-    }
-
-    if (currentPassword === newPassword) {
-      throw new Error("New password must differ from your current password.");
-    }
-
-    // Update DB
-    user.password = newPassword;
-    user.must_change_password = false;
-    users[userIndex] = user;
-    localStorage.setItem("dayflow_users", JSON.stringify(users));
-
-    // Update active session
-    currentUser.must_change_password = false;
-    localStorage.setItem("dayflow_current_user", JSON.stringify(currentUser));
 
     return { success: true };
   },
 
   /**
-   * Reset password request / Forgot Password mockup
+   * Reset password request / Forgot Password mockup.
+   * FRONTEND-ONLY — no backend forgot-password endpoint exists.
    */
   forgotPassword: async (email) => {
     await delay(1000);
-    const users = JSON.parse(localStorage.getItem("dayflow_users") || "[]");
-    const user = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
 
-    if (!user) {
-      throw new Error("No account found with this email address.");
-    }
-
-    // In a real application, this would email a reset token.
+    // In a real application, this would call a backend endpoint.
     return {
       success: true,
-      message: `Password reset instructions have been sent to ${email}.`
+      message: `Password reset instructions have been sent to ${email}.`,
     };
   },
 
   /**
-   * Get currently authenticated user from localStorage
+   * Get currently authenticated user from localStorage.
    */
   getCurrentUser: () => {
-    const userStr = localStorage.getItem("dayflow_current_user");
+    const userStr = localStorage.getItem('dayflow_current_user');
     return userStr ? JSON.parse(userStr) : null;
   },
 
   /**
-   * Log out the current user, clearing sessions
+   * Log out the current user, clearing sessions.
    */
   logout: () => {
-    localStorage.removeItem("dayflow_token");
-    localStorage.removeItem("dayflow_current_user");
-  }
+    localStorage.removeItem('dayflow_token');
+    localStorage.removeItem('dayflow_current_user');
+  },
 };
