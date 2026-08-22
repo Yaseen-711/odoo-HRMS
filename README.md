@@ -23,6 +23,7 @@ For in-depth architectural and developer documentation, please refer to the dedi
 ## 🌟 Key Features & Capability Matrix
 
 ### 👤 Employee & Directory Management
+- **Admin-Only Employee Onboarding**: Only the system **Admin (Chinmayanand Nk)** can create and onboard new employees into the organization. Standard testing employee accounts do not have permission to add employees.
 - **Atomic Sequence Login ID Generation**: System-generated identifiers (`ADMIN-0001`, `EMP-0001`) with temporary password issuance.
 - **Role-Based Access Control**: Granular roles (`ADMIN`, `HR_OFFICER`, `EMPLOYEE`) securing sensitive payroll and banking attributes.
 - **Coworker Directory**: Quick employee phonebook search with position and department filtering.
@@ -185,9 +186,9 @@ The system comes pre-populated with 3 default accounts for evaluator testing:
 
 | Role | Employee Name | Login ID / Email | Password | Access Privileges |
 |------|---------------|------------------|----------|-------------------|
-| **ADMIN** | Chinmayanand Nk | `nkchinmayanandunk@gmail.com` | `123456` | Full administrative access to employees, payroll PDF export, attendance CSV export, and leave decisions |
-| **EMPLOYEE** | Anish Kumar | `anishk.s149@gmail.com` | `123456` | Personal dashboard, shift clock-in/out, leave filing, profile updates |
-| **EMPLOYEE** | Yaseen S | `yaseen0706@gmail.com` | `123456` | Personal dashboard, shift clock-in/out, leave filing, profile updates |
+| **ADMIN** | Chinmayanand Nk | `nkchinmayanandunk@gmail.com` | `123456` | Full administrative access: **Only Admin can add/onboard new employees**, manage payroll PDF export, attendance CSV export, and leave approvals |
+| **EMPLOYEE** | Anish Kumar | `anishk.s149@gmail.com` | `123456` | Personal dashboard, shift clock-in/out, leave filing, profile updates (*Cannot add employees*) |
+| **EMPLOYEE** | Yaseen S | `yaseen0706@gmail.com` | `123456` | Personal dashboard, shift clock-in/out, leave filing, profile updates (*Cannot add employees*) |
 
 *Note: You can also use the **Quick Sandbox Logins** buttons on the login screen (`/login`) to pre-fill test credentials with one click.*
 
