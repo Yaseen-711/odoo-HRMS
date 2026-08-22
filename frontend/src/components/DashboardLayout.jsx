@@ -12,7 +12,8 @@ import {
   Bell, 
   Search, 
   ChevronDown, 
-  LogOut 
+  LogOut,
+  CreditCard
 } from "lucide-react";
 import { authService } from "../services/authService";
 import { notificationRepository } from "../data/notifications";
@@ -73,14 +74,25 @@ export const DashboardLayout = ({ children, onSearch }) => {
     }
   };
 
-  const menuItems = [
-    { name: "Dashboard", path: "/dashboard", icon: Activity },
-    { name: "Employees", path: "/employees", icon: Users },
-    { name: "Attendance", path: "/attendance", icon: Clock },
-    { name: "Time Off", path: "/time-off", icon: Calendar },
-    { name: "My Profile", path: "/profile", icon: UserIcon },
-    { name: "Settings", path: "/settings", icon: SettingsIcon },
-  ];
+  const isEmployee = currentUser?.role?.toUpperCase() === "EMPLOYEE";
+  const menuItems = isEmployee
+    ? [
+        { name: "Dashboard", path: "/dashboard", icon: Activity },
+        { name: "Employees", path: "/employees", icon: Users },
+        { name: "My Attendance", path: "/attendance", icon: Clock },
+        { name: "My Time Off", path: "/time-off", icon: Calendar },
+        { name: "My Profile", path: "/profile", icon: UserIcon },
+        { name: "Settings", path: "/settings", icon: SettingsIcon },
+      ]
+    : [
+        { name: "Dashboard", path: "/dashboard", icon: Activity },
+        { name: "Employees", path: "/employees", icon: Users },
+        { name: "Attendance", path: "/attendance", icon: Clock },
+        { name: "Time Off", path: "/time-off", icon: Calendar },
+        { name: "Payroll / Salary", path: "/payroll", icon: CreditCard },
+        { name: "My Profile", path: "/profile", icon: UserIcon },
+        { name: "Settings", path: "/settings", icon: SettingsIcon },
+      ];
 
   if (!currentUser) return null;
 

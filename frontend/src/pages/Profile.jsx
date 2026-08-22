@@ -168,6 +168,12 @@ export const Profile = () => {
                 <span className="text-muted font-medium">Date of Birth</span>
                 <span className="font-semibold text-ink">{profileData.date_of_birth || "1990-05-12"}</span>
               </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="text-muted font-medium">Monthly Salary</span>
+                <span className="font-semibold text-ink">
+                  {profileData.salary ? `₹${profileData.salary.toLocaleString()}` : "₹50,000"}
+                </span>
+              </div>
             </div>
           </div>
 

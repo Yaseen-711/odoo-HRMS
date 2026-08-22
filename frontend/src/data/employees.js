@@ -16,7 +16,8 @@ export const initialEmployees = [
     location: "San Francisco",
     manager: "Sarah Jenkins",
     status: "Present", // "Present", "Absent", "On Leave"
-    profile_picture: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200&h=200"
+    profile_picture: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200&h=200",
+    salary: 125000
   },
   {
     id: 2,
@@ -34,7 +35,8 @@ export const initialEmployees = [
     location: "San Francisco",
     manager: "Sarah Jenkins",
     status: "Present",
-    profile_picture: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200&h=200"
+    profile_picture: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200&h=200",
+    salary: 85000
   },
   {
     id: 3,
@@ -52,7 +54,8 @@ export const initialEmployees = [
     location: "San Francisco",
     manager: "Sarah Jenkins",
     status: "On Leave",
-    profile_picture: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200&h=200"
+    profile_picture: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200&h=200",
+    salary: 95000
   },
   {
     id: 4,
@@ -70,7 +73,8 @@ export const initialEmployees = [
     location: "San Jose",
     manager: "Marcus Vance",
     status: "Absent",
-    profile_picture: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200&h=200"
+    profile_picture: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200&h=200",
+    salary: 60000
   },
   {
     id: 5,
@@ -88,19 +92,28 @@ export const initialEmployees = [
     location: "London",
     manager: "Sarah Jenkins",
     status: "Present",
-    profile_picture: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=200&h=200"
+    profile_picture: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=200&h=200",
+    salary: 55000
   }
 ];
 
 // Helper functions for employee management
 export const employeeRepository = {
   getAll: () => {
-    const list = localStorage.getItem("dayflow_mock_employees");
+    let list = localStorage.getItem("dayflow_mock_employees");
     if (!list) {
       localStorage.setItem("dayflow_mock_employees", JSON.stringify(initialEmployees));
       return initialEmployees;
     }
-    return JSON.parse(list);
+    
+    // Check if the stored database lacks salary fields and reset/merge if needed
+    const parsed = JSON.parse(list);
+    if (parsed.length > 0 && parsed[0].salary === undefined) {
+      localStorage.setItem("dayflow_mock_employees", JSON.stringify(initialEmployees));
+      return initialEmployees;
+    }
+    
+    return parsed;
   },
   
   getById: (id) => {
