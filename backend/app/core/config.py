@@ -16,8 +16,16 @@ class Settings(BaseSettings):
     # Standard working hours per day (used by attendance service)
     STANDARD_WORK_HOURS: float = 8.0
 
-    # Optional — Redis is not required for V1 but is preserved if configured
+    # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
+
+    # SMTP Settings for email notifications
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 465
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = "noreply@dayflow.com"
+    SMTP_USE_TLS: bool = False
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

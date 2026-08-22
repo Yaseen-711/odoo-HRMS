@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
+from app.events.publisher import publish_event
 from app.models.attendance import Attendance, AttendanceStatus
 from app.models.employee import Employee
 from app.models.user import User, UserRole
@@ -55,6 +56,11 @@ async def check_in(db: AsyncSession, employee: Employee) -> Attendance:
         db.add(existing)
         await db.commit()
         await db.refresh(existing)
+        await publish_event(
+            event_type="attendance.updated",
+            employee_id=employee.id,
+            status=existing.status.value if hasattr(existing.status, "value") else str(existing.status),
+        )
         return existing
 
     record = Attendance(
@@ -70,6 +76,11 @@ async def check_in(db: AsyncSession, employee: Employee) -> Attendance:
         "Check-in recorded  employee_id=%s  time=%s",
         employee.id,
         now.isoformat(),
+    )
+    await publish_event(
+        event_type="attendance.updated",
+        employee_id=employee.id,
+        status=record.status.value if hasattr(record.status, "value") else str(record.status),
     )
     return record
 
@@ -106,6 +117,11 @@ async def check_out(db: AsyncSession, employee: Employee) -> Attendance:
         "Check-out recorded  employee_id=%s  work_hours=%.2f",
         employee.id,
         work_hours,
+    )
+    await publish_event(
+        event_type="attendance.updated",
+        employee_id=employee.id,
+        status=record.status.value if hasattr(record.status, "value") else str(record.status),
     )
     return record
 

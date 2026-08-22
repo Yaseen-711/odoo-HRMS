@@ -7,6 +7,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
+from app.events.publisher import publish_event
 from app.models.employee import Employee
 from app.models.leave import LeaveRequest, LeaveStatus
 from app.models.user import User, UserRole
@@ -55,6 +56,11 @@ async def create_leave_request(
         data.leave_type,
         data.start_date,
         data.end_date,
+    )
+    await publish_event(
+        event_type="leave.updated",
+        employee_id=employee.id,
+        status=req.status.value if hasattr(req.status, "value") else str(req.status),
     )
     return req
 
@@ -126,6 +132,11 @@ async def decide_leave_request(
         leave_id,
         decision.status,
         admin.id,
+    )
+    await publish_event(
+        event_type="leave.updated",
+        employee_id=req.employee_id,
+        status=req.status.value if hasattr(req.status, "value") else str(req.status),
     )
     return req
 

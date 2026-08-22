@@ -21,6 +21,7 @@ from app.schemas.employee import (
     EmployeeUpdate,
 )
 from app.services.login_id_service import generate_login_id
+from app.workers.jobs import enqueue_send_credentials_job
 
 logger = logging.getLogger(__name__)
 
@@ -124,6 +125,22 @@ async def create_employee(
         user.id,
         data.email,
     )
+
+    # Enqueue credential email job AFTER successful DB commit
+    try:
+        await enqueue_send_credentials_job(
+            to_email=data.email,
+            first_name=data.first_name,
+            login_id=login_id,
+            temporary_password=temp_password,
+        )
+    except Exception as e:
+        logger.error(
+            "Failed to enqueue credential email for employee_code=%s: %s",
+            employee_code,
+            str(e),
+            exc_info=True,
+        )
 
     # Populate email in schema
     emp_out = EmployeeAdminOut.model_validate(employee)

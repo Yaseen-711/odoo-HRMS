@@ -77,3 +77,5 @@ wcwidth==0.8.2
 websockets==16.0
 pillow==12.3.0
 reportlab==5.0.1
+arq==0.28.0
+redis==5.3.1

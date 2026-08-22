@@ -14,6 +14,9 @@ from app.middleware.request_id import RequestIDMiddleware
 setup_logging()
 logger = logging.getLogger(__name__)
 
+import asyncio
+from contextlib import asynccontextmanager
+
 # ── Routers ────────────────────────────────────────────────────────────────
 from app.api.auth import router as auth_router
 from app.api.employees import router as employees_router
@@ -22,6 +25,21 @@ from app.api.leave import router as leave_router
 from app.api.payroll import router as payroll_router
 from app.api.dashboard import router as dashboard_router
 from app.api.documents import router as documents_router
+from app.api.websocket import router as websocket_router
+from app.realtime.subscriber import start_redis_subscriber
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Launch background Redis Pub/Sub subscriber task
+    subscriber_task = asyncio.create_task(start_redis_subscriber())
+    yield
+    subscriber_task.cancel()
+    try:
+        await subscriber_task
+    except asyncio.CancelledError:
+        pass
+
 
 # ── Application ────────────────────────────────────────────────────────────
 app = FastAPI(
@@ -30,6 +48,7 @@ app = FastAPI(
     description="Human Resource Management System — Dayflow HRMS MVP",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # ── Middleware ─────────────────────────────────────────────────────────────
@@ -67,6 +86,7 @@ app.include_router(leave_router, prefix=prefix)
 app.include_router(payroll_router, prefix=prefix)
 app.include_router(dashboard_router, prefix=prefix)
 app.include_router(documents_router, prefix=prefix)
+app.include_router(websocket_router)  # Mounted at /ws/dashboard
 
 
 @app.get("/health", tags=["Health"])
