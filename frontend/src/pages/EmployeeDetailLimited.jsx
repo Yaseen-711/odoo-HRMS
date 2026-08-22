@@ -52,7 +52,7 @@ export const EmployeeDetailLimited = () => {
           <p className="text-xs text-muted">{error || "The employee identifier could not be verified in the directory."}</p>
           <Link
             to="/employees"
-            className="px-4 py-2 bg-ink hover:bg-black text-white text-xs font-bold rounded-md transition-all"
+            className="px-4 py-2 bg-surface-strong hover:bg-hairline-strong text-ink text-xs font-bold rounded-md transition-all"
           >
             Return to Directory
           </Link>

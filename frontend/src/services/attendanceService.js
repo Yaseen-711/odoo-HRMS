@@ -105,16 +105,15 @@ export const attendanceService = {
       const data = await apiClient.get('/attendance/daily', params);
       return transformAttendance(data);
     } catch (err) {
-      // If no record found (404), return a default absent record
-      if (err.message.includes('404') || err.message.includes('not found')) {
-        return {
-          status: 'Absent',
-          check_in: '--',
-          check_out: '--',
-          duration: '0h 0m',
-        };
-      }
-      throw err;
+      // If no record found or any error fetching daily attendance,
+      // return a default absent record so the page doesn't break
+      console.warn('getDaily fallback:', err.message);
+      return {
+        status: 'Absent',
+        check_in: '--',
+        check_out: '--',
+        duration: '0h 0m',
+      };
     }
   },
 

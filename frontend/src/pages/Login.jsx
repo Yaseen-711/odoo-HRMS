@@ -77,11 +77,11 @@ export const Login = () => {
   // Helper to prefill details for easy evaluator testing
   const prefillTestAccount = (role) => {
     if (role === "admin") {
-      setIdentifier("ADMIN-0001");
-      setPassword("password");
+      setIdentifier("nkchinmayanandunk@gmail.com");
+      setPassword("123456");
     } else {
-      setIdentifier("EMP-0001");
-      setPassword("password");
+      setIdentifier("anishk.s149@gmail.com");
+      setPassword("123456");
     }
   };
 

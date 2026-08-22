@@ -243,7 +243,7 @@ export const Attendance = () => {
             {currentUser?.role === "ADMIN" && (
               <button
                 onClick={handleExportCsv}
-                className="px-4 py-2 bg-ink hover:bg-black text-white text-xs font-bold rounded-md transition-all flex items-center gap-1.5 self-start md:self-auto"
+                className="px-4 py-2 bg-surface-strong hover:bg-hairline-strong text-ink text-xs font-bold rounded-md transition-all flex items-center gap-1.5 self-start md:self-auto"
               >
                 Export Report (CSV)
               </button>
@@ -286,7 +286,7 @@ export const Attendance = () => {
               ) : todayAttendance.check_out === "--" ? (
                 <button
                   onClick={handleCheckOut}
-                  className="w-full sm:w-auto px-6 py-2.5 bg-ink hover:bg-black text-white text-xs font-bold rounded-md transition-all duration-150"
+                  className="w-full sm:w-auto px-6 py-2.5 bg-surface-strong hover:bg-hairline-strong text-ink text-xs font-bold rounded-md transition-all duration-150"
                 >
                   CLOCK OUT
                 </button>
@@ -319,7 +319,7 @@ export const Attendance = () => {
                     onClick={() => setFilterRange(range)}
                     className={`px-3 py-1 rounded text-xs font-semibold border transition-all duration-150 ${
                       filterRange === range
-                        ? "bg-ink text-white border-ink"
+                        ? "bg-surface-strong text-ink border-hairline-strong"
                         : "bg-surface-card text-body border-hairline-strong hover:bg-canvas-soft"
                     }`}
                   >

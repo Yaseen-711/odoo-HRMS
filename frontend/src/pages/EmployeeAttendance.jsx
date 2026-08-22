@@ -221,7 +221,7 @@ export const EmployeeAttendance = () => {
               ) : todayAttendance.check_out === "--" ? (
                 <button
                   onClick={handleCheckOut}
-                  className="w-full sm:w-auto px-6 py-2.5 bg-ink hover:bg-black text-white text-xs font-bold rounded-md transition-all duration-150 border border-hairline-strong"
+                  className="w-full sm:w-auto px-6 py-2.5 bg-surface-strong hover:bg-hairline-strong text-ink text-xs font-bold rounded-md transition-all duration-150 border border-hairline-strong"
                 >
                   CLOCK OUT
                 </button>
@@ -254,7 +254,7 @@ export const EmployeeAttendance = () => {
                     onClick={() => setFilterRange(range)}
                     className={`px-3 py-1 rounded text-xs font-semibold border transition-all duration-150 ${
                       filterRange === range
-                        ? "bg-ink text-white border-ink"
+                        ? "bg-surface-strong text-ink border-hairline-strong"
                         : "bg-surface-card text-body border-hairline-strong hover:bg-canvas-soft"
                     }`}
                   >

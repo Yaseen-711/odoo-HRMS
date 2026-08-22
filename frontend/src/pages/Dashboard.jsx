@@ -146,17 +146,30 @@ export const Dashboard = () => {
       setLoading(true);
       setError(null);
 
-      const summary = await dashboardService.getSummary();
-      if (summary.todayAttendance) {
-        setTodayAttendance(summary.todayAttendance);
+      try {
+        const summary = await dashboardService.getSummary();
+        if (summary.todayAttendance) {
+          setTodayAttendance(summary.todayAttendance);
+        }
+      } catch (summaryErr) {
+        console.warn('Dashboard summary unavailable:', summaryErr.message);
       }
 
-      const emps = employeeRepository.getAll();
-      const total = emps.length;
-      const present = emps.filter(e => e.status === "Present").length;
-      const leave = emps.filter(e => e.status === "On Leave").length;
-      const absent = emps.filter(e => e.status === "Absent").length;
-      setStats({ total, present, leave, absent });
+      // Use real API for employee count
+      let emps = [];
+      try {
+        const { employeeService } = await import("../services/employeeService");
+        emps = await employeeService.getAll();
+        const total = emps.length;
+        setStats({ total, present: total, leave: 0, absent: 0 });
+      } catch {
+        emps = employeeRepository.getAll();
+        const total = emps.length;
+        const present = emps.filter(e => e.status === "Present").length;
+        const leave = emps.filter(e => e.status === "On Leave").length;
+        const absent = emps.filter(e => e.status === "Absent").length;
+        setStats({ total, present, leave, absent });
+      }
 
       // Merge check-in/out & leave logs
       const mockAttendance = attendanceRepository.getAll();

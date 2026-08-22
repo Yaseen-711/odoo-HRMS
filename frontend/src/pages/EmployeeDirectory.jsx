@@ -85,7 +85,7 @@ export const EmployeeDirectory = () => {
                 onClick={() => setSelectedDept(dept)}
                 className={`px-3 py-1.5 rounded-md text-xs font-semibold border transition-all duration-150 ${
                   selectedDept === dept
-                    ? "bg-ink text-white border-ink"
+                    ? "bg-surface-strong text-ink border-hairline-strong"
                     : "bg-surface-card text-body border-hairline-strong hover:bg-canvas-soft"
                 }`}
               >

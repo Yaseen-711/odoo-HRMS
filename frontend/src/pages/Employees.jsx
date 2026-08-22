@@ -156,7 +156,7 @@ export const Employees = () => {
                 onClick={() => setSelectedDept(dept)}
                 className={`px-3 py-1.5 rounded-md text-xs font-semibold border transition-all duration-150 ${
                   selectedDept === dept
-                    ? "bg-ink text-white border-ink"
+                    ? "bg-surface-strong text-ink border-hairline-strong"
                     : "bg-surface-card text-body border-hairline-strong hover:bg-canvas-soft"
                 }`}
               >
@@ -185,7 +185,7 @@ export const Employees = () => {
             {filteredEmployees.map((emp) => (
               <div
                 key={emp.id}
-                onClick={() => navigate(`/employees/${emp.employee_id}`)}
+                onClick={() => navigate(`/employees/${emp.id}`)}
                 className="bg-surface-card border border-hairline hover:border-hairline-strong rounded-lg p-5 flex flex-col justify-between text-left cursor-pointer transition-all duration-150 relative group"
               >
                 {/* Employee Status Pill absolute top */}
@@ -197,9 +197,9 @@ export const Employees = () => {
                       ? "bg-blue-500"
                       : emp.status
                       ? "bg-amber-500"
-                      : "bg-gray-300"
+                      : "bg-emerald-500"
                   }`}></span>
-                  <span className="text-[10px] font-semibold text-muted tracking-wide">{emp.status || "Unknown"}</span>
+                  <span className="text-[10px] font-semibold text-muted tracking-wide">{emp.status || "Active"}</span>
                 </div>
 
                 <div className="flex items-start gap-4">
@@ -393,7 +393,7 @@ export const Employees = () => {
 
                 <button
                   onClick={() => setShowAddModal(false)}
-                  className="w-full bg-ink hover:bg-black text-white py-2 rounded-md text-xs font-bold transition-all shadow-xs"
+                  className="w-full bg-surface-strong hover:bg-hairline-strong text-ink py-2 rounded-md text-xs font-bold transition-all shadow-xs"
                 >
                   Done
                 </button>

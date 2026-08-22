@@ -4,6 +4,7 @@ import { DashboardLayout } from "../components/DashboardLayout";
 import { authService } from "../services/authService";
 import { leaveService } from "../services/leaveService";
 import { employeeRepository } from "../data/employees";
+import { employeeService } from "../services/employeeService";
 import { leaveRepository } from "../data/leave";
 import { notificationRepository } from "../data/notifications";
 import { InputField } from "../components/InputField";
@@ -30,12 +31,20 @@ export const TimeOff = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    const user = authService.getCurrentUser();
-    if (user) {
-      setCurrentUser(user);
-      setEmployees(employeeRepository.getAll());
-      loadLeaveData(user);
-    }
+    const init = async () => {
+      const user = authService.getCurrentUser();
+      if (user) {
+        setCurrentUser(user);
+        try {
+          const emps = await employeeService.getAll();
+          setEmployees(emps);
+        } catch {
+          setEmployees(employeeRepository.getAll());
+        }
+        loadLeaveData(user);
+      }
+    };
+    init();
   }, []);
 
   const loadLeaveData = async (user) => {

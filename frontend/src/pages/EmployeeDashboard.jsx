@@ -429,7 +429,7 @@ export const EmployeeDashboard = () => {
               ) : todayAttendance.check_out === "--" ? (
                 <button
                   onClick={handleCheckOut}
-                  className="w-full bg-ink hover:bg-black text-white text-xs font-bold py-2.5 rounded-md transition-all border border-hairline-strong"
+                  className="w-full bg-surface-strong hover:bg-hairline-strong text-ink text-xs font-bold py-2.5 rounded-md transition-all border border-hairline-strong"
                 >
                   CLOCK OUT
                 </button>

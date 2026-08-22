@@ -81,13 +81,13 @@ export const authService = {
         };
       } else {
         userObj = {
-          id: 999,
-          login_id: "ADMIN-0001",
-          email: "admin@dayflow.com",
-          name: "HR Administrator",
+          id: 77,
+          login_id: "nkchinmayanandunk@gmail.com",
+          email: "nkchinmayanandunk@gmail.com",
+          name: "Chinmayanand Nk",
           role: "ADMIN",
           must_change_password: false,
-          employee_code: "ADMIN-0001"
+          employee_code: "ADMIN-001"
         };
       }
 

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { CreditCard, Search, DollarSign, Users, Award, Edit3, X, Check, Loader2 } from "lucide-react";
 import { DashboardLayout } from "../components/DashboardLayout";
-import { employeeRepository } from "../data/employees";
+import { employeeService } from "../services/employeeService";
+import { apiClient } from "../services/apiClient";
 import { InputField } from "../components/InputField";
 
 export const Payroll = () => {
@@ -19,11 +20,27 @@ export const Payroll = () => {
     loadPayrollData();
   }, []);
 
-  const loadPayrollData = () => {
+  const loadPayrollData = async () => {
     setLoading(true);
-    const data = employeeRepository.getAll();
-    setEmployees(data);
-    setLoading(false);
+    try {
+      const emps = await employeeService.getAll();
+      // Fetch salary data for each employee from backend
+      const empsWithSalary = await Promise.all(
+        emps.map(async (emp) => {
+          try {
+            const salaryData = await apiClient.get(`/payroll/${emp.id}`);
+            return { ...emp, salary: salaryData.basic_salary || 0 };
+          } catch {
+            return { ...emp, salary: 0 };
+          }
+        })
+      );
+      setEmployees(empsWithSalary);
+    } catch (err) {
+      console.error('Failed to load payroll data:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleOpenAdjustModal = (emp) => {
@@ -37,8 +54,14 @@ export const Payroll = () => {
     if (!selectedEmp) return;
     try {
       setSaving(true);
-      employeeRepository.update(selectedEmp.id, { salary: Number(newSalary) });
-      loadPayrollData();
+      try {
+        // Try to update existing salary structure
+        await apiClient.patch(`/payroll/${selectedEmp.id}`, { basic_salary: Number(newSalary) });
+      } catch {
+        // If no salary structure exists, create one
+        await apiClient.post(`/payroll/${selectedEmp.id}`, { basic_salary: Number(newSalary) });
+      }
+      await loadPayrollData();
       setModalOpen(false);
       setSelectedEmp(null);
     } catch (err) {
@@ -86,8 +109,8 @@ export const Payroll = () => {
     const fullName = `${emp.first_name} ${emp.last_name}`.toLowerCase();
     const query = searchQuery.toLowerCase();
     return fullName.includes(query) || 
-           emp.employee_id.toLowerCase().includes(query) ||
-           emp.department.toLowerCase().includes(query);
+           (emp.employee_id || '').toLowerCase().includes(query) ||
+           (emp.department || '').toLowerCase().includes(query);
   });
 
   return (
@@ -189,11 +212,17 @@ export const Payroll = () => {
                   {filteredEmployees.map(emp => (
                     <tr key={emp.id} className="hover:bg-canvas-soft transition-colors">
                       <td className="py-3 px-4 flex items-center gap-3">
-                        <img
-                          src={emp.profile_picture}
-                          alt={`${emp.first_name} ${emp.last_name}`}
-                          className="w-8 h-8 rounded object-cover border border-hairline"
-                        />
+                        {emp.profile_picture ? (
+                          <img
+                            src={emp.profile_picture}
+                            alt={`${emp.first_name} ${emp.last_name}`}
+                            className="w-8 h-8 rounded object-cover border border-hairline"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded bg-primary/10 border border-hairline flex items-center justify-center text-primary text-xs font-bold">
+                            {(emp.first_name || '')[0]}{(emp.last_name || '')[0]}
+                          </div>
+                        )}
                         <div className="flex flex-col">
                           <span className="text-xs font-semibold text-ink leading-tight">{emp.first_name} {emp.last_name}</span>
                           <span className="text-[10px] text-muted mt-0.5">{emp.email}</span>
