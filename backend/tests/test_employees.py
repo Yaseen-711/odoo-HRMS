@@ -316,3 +316,60 @@ async def test_atomic_rollback(
             select(User).where(User.email == email_dup)
         )
         assert user_check.scalar_one_or_none() is None
+
+
+# ── Employee code lookup endpoint ─────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_get_employee_by_code(client: AsyncClient, admin_token: str):
+    """GET /employees/code/{employee_code} resolves the business identifier.
+
+    This endpoint was added to fix the 422 error caused by the frontend passing
+    a string like 'EMP-0624' to the integer-typed /{employee_id} route.
+    """
+    import uuid
+    unique = uuid.uuid4().hex[:6]
+    create_resp = await client.post(
+        "/api/employees",
+        json={
+            "first_name": "CodeLookup",
+            "last_name": "Test",
+            "email": f"code-lookup-{unique}@test.com",
+        },
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert create_resp.status_code == 201
+    emp_code = create_resp.json()["employee"]["employee_code"]
+
+    # Lookup by employee_code should return 200
+    resp = await client.get(
+        f"/api/employees/code/{emp_code}",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["employee_code"] == emp_code
+    assert data["first_name"] == "CodeLookup"
+
+
+@pytest.mark.asyncio
+async def test_get_employee_by_code_not_found(client: AsyncClient, admin_token: str):
+    """GET /employees/code/EMP-NONEXISTENT returns 404, not 422."""
+    resp = await client.get(
+        "/api/employees/code/EMP-NONEXISTENT",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_get_employee_by_int_id_still_works(client: AsyncClient, admin_token: str, created_employee: dict):
+    """GET /employees/{id} (integer) still resolves correctly alongside the code route."""
+    emp_id = created_employee["employee"]["id"]
+    resp = await client.get(
+        f"/api/employees/{emp_id}",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["id"] == emp_id

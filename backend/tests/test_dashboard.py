@@ -65,23 +65,32 @@ async def test_dashboard_role_is_employee(
 
 
 @pytest.mark.asyncio
-async def test_dashboard_returns_404_for_admin_without_employee_profile(
+async def test_dashboard_returns_200_for_admin(
     client: AsyncClient, admin_token: str
 ):
-    """Admins can also access the dashboard endpoint.
+    """Admin users receive a 200 with an administrative aggregate dashboard.
 
-    Note: admin_token comes from a User seeded with role=ADMIN, which does
-    NOT have an Employee record by default. The service calls
-    get_employee_by_user_id which raises NotFoundError → 404.
-    This is correct behaviour — an admin without an employee profile
-    should be told their employee profile is missing.
+    ADMIN accounts do not necessarily have an Employee record.
+    The dashboard service detects this and returns an AdminDashboardOut
+    with aggregate stats instead of the employee-centric DashboardSummaryOut.
     """
     resp = await client.get(
         "/api/dashboard/summary",
         headers={"Authorization": f"Bearer {admin_token}"},
     )
-    # Admin user created by conftest has no Employee row → 404
-    assert resp.status_code == 404
+    assert resp.status_code == 200
+    data = resp.json()
+    # Admin response shape
+    assert data["role"] in ("ADMIN", "HR_OFFICER")
+    assert "stats" in data
+    stats = data["stats"]
+    assert "total_employees" in stats
+    assert "checked_in_today" in stats
+    assert "checked_out_today" in stats
+    assert "pending_leave_requests" in stats
+    # Admin summary must NOT have an employee-specific payroll or leave breakdown
+    assert "payroll" not in data
+    assert "employee" not in data
 
 
 # ── Attendance integration ─────────────────────────────────────────────────

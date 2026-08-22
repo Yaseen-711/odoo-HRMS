@@ -16,19 +16,38 @@ class Settings(BaseSettings):
     # Standard working hours per day (used by attendance service)
     STANDARD_WORK_HOURS: float = 8.0
 
-    # Optional — Redis is not required for V1 but is preserved if configured
+    # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    # SMTP
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 465
+    SMTP_USERNAME: str
+    SMTP_PASSWORD: str
+    SMTP_FROM: str
+    SMTP_USE_TLS: bool = False
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        extra="ignore",
+    )
 
     @property
     def async_database_url(self) -> str:
         """Return the asyncpg-compatible database URL."""
         url = self.DATABASE_URL
         if url.startswith("postgresql://"):
-            return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+            return url.replace(
+                "postgresql://",
+                "postgresql+asyncpg://",
+                1,
+            )
         if url.startswith("postgresql+psycopg2://"):
-            return url.replace("postgresql+psycopg2://", "postgresql+asyncpg://", 1)
+            return url.replace(
+                "postgresql+psycopg2://",
+                "postgresql+asyncpg://",
+                1,
+            )
         return url
 
 

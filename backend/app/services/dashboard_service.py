@@ -1,4 +1,10 @@
-"""Dashboard service — read-only aggregation across existing tables."""
+"""Dashboard service — read-only aggregation across existing tables.
+
+V1 architecture notes:
+- EMPLOYEE users have an Employee record and get a full personal dashboard.
+- ADMIN / HR_OFFICER users may not have an Employee record.
+  They get an administrative aggregate view instead of a personal employee snapshot.
+"""
 
 import logging
 from datetime import date, datetime, timezone
@@ -10,8 +16,10 @@ from app.models.attendance import Attendance
 from app.models.employee import Employee
 from app.models.leave import LeaveRequest, LeaveStatus
 from app.models.salary import SalaryStructure
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.dashboard import (
+    AdminDashboardOut,
+    AdminStats,
     AttendanceSummary,
     DashboardSummaryOut,
     EmployeeSnapshot,
@@ -28,16 +36,20 @@ def _today_utc() -> date:
     return datetime.now(timezone.utc).date()
 
 
-async def get_summary(db: AsyncSession, current_user: User) -> DashboardSummaryOut:
+async def get_summary(db: AsyncSession, current_user: User) -> DashboardSummaryOut | AdminDashboardOut:
     """
-    Build a unified dashboard payload from existing tables.
+    Build a dashboard payload based on the user's role.
 
-    Queries:
-      1. employees       → identity snapshot
-      2. attendance      → today's check-in / check-out status
-      3. leave_requests  → aggregate counts by status
-      4. salary_structures → contract existence + net salary
+    EMPLOYEE → personal dashboard (attendance, leave, payroll).
+    ADMIN / HR_OFFICER → administrative aggregate view (employee counts, leave counts).
     """
+    if current_user.role in (UserRole.ADMIN, UserRole.HR_OFFICER):
+        return await _get_admin_summary(db, current_user)
+    return await _get_employee_summary(db, current_user)
+
+
+async def _get_employee_summary(db: AsyncSession, current_user: User) -> DashboardSummaryOut:
+    """Personal dashboard for logged-in employee."""
 
     # ── 1. Employee identity ───────────────────────────────────────────────
     employee = await get_employee_by_user_id(db, current_user.id)
@@ -125,4 +137,61 @@ async def get_summary(db: AsyncSession, current_user: User) -> DashboardSummaryO
         attendance=att_summary,
         leave=leave_summary,
         payroll=payroll_summary,
+    )
+
+
+async def _get_admin_summary(db: AsyncSession, current_user: User) -> AdminDashboardOut:
+    """Aggregate administrative dashboard for ADMIN / HR_OFFICER users."""
+
+    today = _today_utc()
+
+    # Total employee count
+    total_emp_result = await db.execute(select(func.count(Employee.id)))
+    total_employees: int = total_emp_result.scalar_one() or 0
+
+    # Employees checked in today
+    checked_in_result = await db.execute(
+        select(func.count(Attendance.id)).where(
+            and_(
+                Attendance.date == today,
+                Attendance.check_in.is_not(None),
+                Attendance.check_out.is_(None),
+            )
+        )
+    )
+    checked_in_today: int = checked_in_result.scalar_one() or 0
+
+    # Employees who completed checkout today
+    checked_out_result = await db.execute(
+        select(func.count(Attendance.id)).where(
+            and_(
+                Attendance.date == today,
+                Attendance.check_out.is_not(None),
+            )
+        )
+    )
+    checked_out_today: int = checked_out_result.scalar_one() or 0
+
+    # Total pending leave requests
+    pending_leaves_result = await db.execute(
+        select(func.count(LeaveRequest.id)).where(
+            LeaveRequest.status == LeaveStatus.PENDING
+        )
+    )
+    pending_leaves: int = pending_leaves_result.scalar_one() or 0
+
+    logger.info(
+        "Admin dashboard summary built  user_id=%s  role=%s",
+        current_user.id,
+        current_user.role.value,
+    )
+
+    return AdminDashboardOut(
+        role=current_user.role.value,
+        stats=AdminStats(
+            total_employees=total_employees,
+            checked_in_today=checked_in_today,
+            checked_out_today=checked_out_today,
+            pending_leave_requests=pending_leaves,
+        ),
     )

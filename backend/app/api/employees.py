@@ -111,9 +111,33 @@ async def update_own_profile(
 
 
 @router.get(
+    "/code/{employee_code}",
+    response_model=EmployeeAdminOut | EmployeeSelfOut | EmployeeOut,
+    summary="Get employee by employee_code (e.g. EMP-0001)",
+)
+async def get_employee_by_code(
+    employee_code: str,
+    current_user: User = Depends(require_employee),
+    db: AsyncSession = Depends(get_db),
+) -> EmployeeAdminOut | EmployeeSelfOut | EmployeeOut:
+    """
+    Look up an employee by their business-facing employee_code identifier.
+    This is the canonical public-facing identifier used by the frontend.
+    """
+    emp = await employee_service.get_employee_by_code(db, employee_code)
+    await employee_service.require_own_or_admin(current_user, emp)
+
+    if current_user.role in (UserRole.ADMIN, UserRole.HR_OFFICER):
+        return _to_admin_out(emp)
+    if emp.user_id == current_user.id:
+        return _to_self_out(emp)
+    return _to_public_out(emp)
+
+
+@router.get(
     "/{employee_id}",
     response_model=EmployeeAdminOut | EmployeeSelfOut | EmployeeOut,
-    summary="Get employee by ID",
+    summary="Get employee by numeric ID",
 )
 async def get_employee(
     employee_id: int,

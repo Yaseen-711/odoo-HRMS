@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AlreadyExistsError, NotFoundError
+from app.events.publisher import publish_event
 from app.models.salary import SalaryStructure
 from app.schemas.payroll import SalaryOut, SalaryStructureCreate, SalaryStructureUpdate
 
@@ -84,6 +85,11 @@ async def create_salary_structure(
     await db.commit()
     await db.refresh(ss)
     logger.info("Salary structure created  employee_id=%s", employee_id)
+    await publish_event(
+        event_type="payroll.updated",
+        employee_id=employee_id,
+        status="CREATED",
+    )
     return compute_salary_totals(ss)
 
 
@@ -99,6 +105,11 @@ async def update_salary_structure(
     await db.commit()
     await db.refresh(ss)
     logger.info("Salary structure updated  employee_id=%s", employee_id)
+    await publish_event(
+        event_type="payroll.updated",
+        employee_id=employee_id,
+        status="UPDATED",
+    )
     return compute_salary_totals(ss)
 
 

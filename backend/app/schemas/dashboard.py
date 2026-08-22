@@ -42,10 +42,26 @@ class EmployeeSnapshot(BaseModel):
 
 
 class DashboardSummaryOut(BaseModel):
-    """Unified dashboard response — one call powers the entire landing page."""
+    """Unified dashboard response for Employee users — one call powers the entire landing page."""
 
     employee: EmployeeSnapshot
     role: str
     attendance: AttendanceSummary
     leave: LeaveSummary
     payroll: PayrollSummary
+
+
+class AdminStats(BaseModel):
+    """Aggregate statistics for Admin/HR dashboard."""
+
+    total_employees: int
+    checked_in_today: int
+    checked_out_today: int
+    pending_leave_requests: int
+
+
+class AdminDashboardOut(BaseModel):
+    """Dashboard response for ADMIN and HR_OFFICER users who may not have an Employee record."""
+
+    role: str
+    stats: AdminStats
