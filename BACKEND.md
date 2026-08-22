@@ -10,10 +10,23 @@ Welcome to the backend system design and architecture reference for **Dayflow HR
 - **ORM & Database**: [SQLAlchemy 2.0 Async](https://www.sqlalchemy.org/) with `asyncpg` driver for PostgreSQL 14+.
 - **Database Migrations**: [Alembic](https://alembic.sqlalchemy.org/).
 - **Cache & Message Broker**: [Redis](https://redis.io/) (used for Pub/Sub WebSockets and ARQ background job queue).
+- **Network Mesh**: [Tailscale](https://tailscale.com/) WireGuard® encrypted mesh VPN for cross-network database & Redis cluster access.
 - **Background Worker**: [ARQ](https://arq-docs.readthedocs.io/) async job processing.
 - **Email Dispatch**: Python `smtplib` supporting implicit SSL (port 465) and explicit STARTTLS (port 587).
 - **Document Rendering**: [ReportLab](https://www.reportlab.com/) canvas engine for dynamic PDF payslip generation.
 - **Security & Auth**: `python-jose` for JWT validation and `passlib` (bcrypt) for password hashing.
+
+---
+
+## 🌐 Cross-Network Collaboration via Tailscale Mesh VPN
+
+During development and hackathon evaluation, team members collaborated across distinct remote networks and locations.
+
+To enable shared data state without exposing database ports to the open internet:
+1. **Mesh Network Topology**: Every developer workstation joined a private **Tailscale** network overlay.
+2. **Shared Data Host**: A primary workstation hosted the PostgreSQL database and Redis message broker.
+3. **Encrypted Access**: Remote team instances connected to PostgreSQL (`postgresql://...`) and Redis (`redis://...`) over Tailscale's WireGuard-encrypted node-to-node tunnels.
+4. **Resilience**: Handled dynamic residential IP shifts seamlessly without requiring firewall rule changes or port forwarding.
 
 ---
 

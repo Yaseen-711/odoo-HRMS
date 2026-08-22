@@ -5,6 +5,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Styling-Tailwind_CSS-38B2AC.svg?style=flat&logo=tailwind-css)](https://tailwindcss.com/)
 [![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-4169E1.svg?style=flat&logo=postgresql)](https://www.postgresql.org/)
 [![Redis](https://img.shields.io/badge/Realtime-Redis_Pub/Sub-DC382D.svg?style=flat&logo=redis)](https://redis.io/)
+[![Tailscale](https://img.shields.io/badge/Network-Tailscale_VPN-4B5563.svg?style=flat&logo=tailscale)](https://tailscale.com/)
 
 **Dayflow HRMS** is an enterprise-grade Human Resource Management System engineered for high-performance workforce operations, employee onboarding, shift tracking, automated payroll rendering, and real-time activity feeds.
 
@@ -45,6 +46,23 @@ For in-depth architectural and developer documentation, please refer to the dedi
 
 ---
 
+## 🌐 Distributed Mesh Infrastructure (Tailscale Integration)
+
+During development and team collaboration, **[Tailscale](https://tailscale.com/)** (a zero-config mesh VPN powered by WireGuard®) was integrated into the team's workflow:
+
+- **Unified Cross-Network Database**: Enabled developers working across different remote networks and physical locations to connect directly to a single shared central PostgreSQL database and Redis message broker.
+- **Encrypted Node-to-Node Security**: All internal database queries, Redis pub/sub broadcasts, and WebSocket sync traffic traveled over encrypted Tailscale VPN tunnels without exposing internal ports to the public internet.
+
+```
+ [ Dev Machine A ] ──┐
+                     │ (Tailscale Encrypted Mesh)
+ [ Dev Machine B ] ──┼────────────────────────────> [ Shared Postgres & Redis Host ]
+                     │
+ [ Dev Machine C ] ──┘
+```
+
+---
+
 ## 🏗️ High-Level System Architecture
 
 ```
@@ -65,7 +83,7 @@ For in-depth architectural and developer documentation, please refer to the dedi
            (asyncpg)       ▼                       ▼
                    ┌───────────────┐       ┌───────────────┐
                    │  PostgreSQL   │       │     Redis     │
-                   │   Database    │       │ Message Broker│
+                   │ Database (VPN)│       │ Message Broker│
                    └───────────────┘       └───────┬───────┘
                                                    │
                                             Worker │ (ARQ)
@@ -88,6 +106,7 @@ For in-depth architectural and developer documentation, please refer to the dedi
 | **Backend** | FastAPI | High-performance async Python web framework |
 | **ORM** | SQLAlchemy 2.0 Async | Asynchronous Object-Relational Mapping |
 | **Database** | PostgreSQL 14+ | Relational data persistence engine |
+| **Networking** | Tailscale | Mesh VPN interconnecting remote dev environments |
 | **Pub/Sub & Queue** | Redis | WebSockets event distribution & ARQ task broker |
 | **Background Tasks** | ARQ | Async background job processing |
 | **PDF Generation** | ReportLab | Programmatic PDF canvas rendering |
@@ -176,20 +195,22 @@ The system comes pre-populated with 3 default accounts for evaluator testing:
 
 ## ⚙️ Environment Variables Reference (`backend/.env`)
 
+Rotated & sanitized configuration template:
+
 ```env
-PROJECT_NAME=Nitte Hack Backend
-VERSION=0.1.0
+PROJECT_NAME=Dayflow HRMS
+VERSION=1.0.0
 API_PREFIX=/api
-DATABASE_URL=postgresql://hackathon_user:2007@chinmay-alienware-16-aurora-ac16250:5432/hackathon_test
-SECRET_KEY=TDLIGMJ4_LQhIokGwNX8suRZF_U3WDWc_7jbvnkf0ak
+DATABASE_URL=postgresql://<DB_USER>:<DB_PASSWORD>@<DB_HOST>:5432/<DB_NAME>
+SECRET_KEY=<YOUR_SUPER_SECRET_JWT_KEY_32_CHARS>
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=60
-REDIS_URL=redis://100.85.59.51:6379
+REDIS_URL=redis://<REDIS_HOST>:6379/0
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=465
-SMTP_USERNAME=nkchinmayanandunk@gmail.com
-SMTP_PASSWORD=aboq wwdy rqnk qegu
-SMTP_FROM=nkchinmayanandunk@gmail.com
+SMTP_USERNAME=<YOUR_SMTP_EMAIL>
+SMTP_PASSWORD=<YOUR_SMTP_APP_PASSWORD>
+SMTP_FROM=<YOUR_SMTP_EMAIL>
 SMTP_USE_TLS=false
 ```
 
@@ -199,4 +220,4 @@ SMTP_USE_TLS=false
 
 For comprehensive technical deep-dives into specific subsystems, see:
 - 📖 **[FRONTEND.md](./FRONTEND.md)** for UI components, design tokens, routing matrix, and React state management.
-- 📖 **[BACKEND.md](./BACKEND.md)** for FastAPI endpoint references, SQLAlchemy schemas, WebSocket Pub/Sub flows, and ARQ workers.
+- 📖 **[BACKEND.md](./BACKEND.md)** for FastAPI endpoint references, SQLAlchemy schemas, Tailscale mesh networking, WebSocket Pub/Sub flows, and ARQ workers.
