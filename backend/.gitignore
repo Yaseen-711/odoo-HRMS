@@ -7,3 +7,6 @@ __pycache__/
 *.pyo
 .pytest_cache/
 *.pyd
+logs/
+.coverage
+htmlcov/
