@@ -190,7 +190,7 @@ The system comes pre-populated with 3 default accounts for evaluator testing:
 | **EMPLOYEE** | Anish Kumar | `anishk.s149@gmail.com` | `123456` | Personal dashboard, shift clock-in/out, leave filing, profile updates (*Cannot add employees*) |
 | **EMPLOYEE** | Yaseen S | `yaseen0706@gmail.com` | `123456` | Personal dashboard, shift clock-in/out, leave filing, profile updates (*Cannot add employees*) |
 
-*Note: You can also use the **Quick Sandbox Logins** buttons on the login screen (`/login`) to pre-fill test credentials with one click.*
+
 
 ---
 
