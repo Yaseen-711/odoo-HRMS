@@ -1,10 +1,3 @@
-from pydantic import BaseModel
+"""Token schema — kept for backward compatibility, re-exports from auth schemas."""
 
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-
-
-class TokenPayload(BaseModel):
-    user_id: int
+from app.schemas.auth import Token, TokenPayload  # noqa: F401

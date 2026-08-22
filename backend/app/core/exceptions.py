@@ -1,3 +1,9 @@
+"""Domain exception classes mapped to HTTP status codes.
+
+Raise these from service-layer code.  The FastAPI exception handler in
+main.py converts them to structured JSON responses.
+"""
+
 from fastapi import HTTPException, status
 
 
@@ -23,3 +29,19 @@ class UnauthorizedError(HTTPException):
 class ForbiddenError(HTTPException):
     def __init__(self, detail: str = "Not enough permissions"):
         super().__init__(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+
+
+class ConflictError(HTTPException):
+    """Invalid state transition or business rule violation."""
+
+    def __init__(self, detail: str = "Operation not allowed in current state"):
+        super().__init__(status_code=status.HTTP_409_CONFLICT, detail=detail)
+
+
+class ValidationError(HTTPException):
+    """Domain-level validation failure (distinct from Pydantic schema errors)."""
+
+    def __init__(self, detail: str = "Validation failed"):
+        super().__init__(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=detail
+        )

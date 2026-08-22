@@ -1,12 +1,24 @@
+"""FastAPI dependency factories for authentication and authorization.
+
+Usage in route handlers:
+    current_user: User = Depends(get_current_user)
+    admin: User = Depends(require_admin)
+    employee: User = Depends(require_employee)
+"""
+
+import logging
+
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import UnauthorizedError
+from app.core.exceptions import ForbiddenError, UnauthorizedError
 from app.core.security import decode_access_token
 from app.db.session import get_db
-from app.models.user import User
+from app.models.user import User, UserRole
+
+logger = logging.getLogger(__name__)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
@@ -15,6 +27,7 @@ async def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> User:
+    """Validate JWT and return the authenticated User."""
     payload = decode_access_token(token)
     if not payload:
         raise UnauthorizedError("Invalid or expired token")
@@ -29,4 +42,23 @@ async def get_current_user(
     if not user:
         raise UnauthorizedError("User not found")
 
+    if not user.is_active:
+        raise ForbiddenError("Account is disabled")
+
     return user
+
+
+async def require_admin(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """Dependency that enforces ADMIN role."""
+    if current_user.role != UserRole.ADMIN:
+        raise ForbiddenError("Admin access required")
+    return current_user
+
+
+async def require_employee(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """Dependency that allows both ADMIN and EMPLOYEE roles (any authenticated user)."""
+    return current_user
