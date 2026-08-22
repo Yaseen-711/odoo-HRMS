@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Mail, Phone, MapPin, Briefcase, Calendar, Shield, User, Clock } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Briefcase, Calendar, User } from "lucide-react";
 import { DashboardLayout } from "../components/DashboardLayout";
 import { employeeService } from "../services/employeeService";
-import { leaveRepository } from "../data/leave";
 
-export const EmployeeDetail = () => {
+export const EmployeeDetailLimited = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
   const [employee, setEmployee] = useState(null);
-  const [leaveBalances, setLeaveBalances] = useState({ PAID: 15, SICK: 8, UNPAID: 10 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -22,15 +20,12 @@ export const EmployeeDetail = () => {
         const record = await employeeService.getById(id);
         if (record) {
           setEmployee(record);
-          // Fetch leave balances for this employee using frontend-only data
-          const balances = leaveRepository.getBalances(record.employee_id);
-          setLeaveBalances(balances);
         } else {
           setEmployee(null);
         }
       } catch (err) {
         console.error("Failed to load employee:", err);
-        setError("An error occurred while fetching employee details.");
+        setError("An error occurred while fetching coworker details.");
       } finally {
         setLoading(false);
       }
@@ -43,7 +38,7 @@ export const EmployeeDetail = () => {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
-          <p className="text-sm font-medium text-muted">Loading employee details...</p>
+          <p className="text-sm font-medium text-muted">Loading details...</p>
         </div>
       </DashboardLayout>
     );
@@ -53,7 +48,7 @@ export const EmployeeDetail = () => {
     return (
       <DashboardLayout>
         <div className="bg-surface-card border border-hairline rounded-lg p-16 text-center max-w-xl mx-auto flex flex-col items-center justify-center gap-4">
-          <span className="text-sm font-semibold text-ink">Employee Profile Not Found</span>
+          <span className="text-sm font-semibold text-ink">Coworker Profile Not Found</span>
           <p className="text-xs text-muted">{error || "The employee identifier could not be verified in the directory."}</p>
           <Link
             to="/employees"
@@ -92,12 +87,12 @@ export const EmployeeDetail = () => {
                 ? "bg-blue-500"
                 : "bg-amber-500"
             }`}></span>
-            <span className="text-[10px] font-bold text-muted uppercase tracking-wider">{employee.status}</span>
+            <span className="text-[10px] font-bold text-muted uppercase tracking-wider">{employee.status || "Away"}</span>
           </div>
 
           <div className="flex flex-col md:flex-row items-center md:items-start gap-5">
             <img
-              src={employee.profile_picture}
+              src={employee.profile_picture || "https://ui-avatars.com/api/?name=" + encodeURIComponent(employee.first_name + " " + employee.last_name)}
               alt={`${employee.first_name} ${employee.last_name}`}
               className="w-24 h-24 rounded-lg object-cover border border-hairline"
             />
@@ -140,22 +135,12 @@ export const EmployeeDetail = () => {
                 <span className="font-semibold text-ink">{employee.location || "San Francisco"}</span>
               </div>
               <div className="flex flex-col gap-0.5">
-                <span className="text-muted font-medium">Date of Joining</span>
-                <span className="font-semibold text-ink">{employee.date_of_joining}</span>
-              </div>
-              <div className="flex flex-col gap-0.5">
                 <span className="text-muted font-medium">Reports To</span>
                 <span className="font-semibold text-ink">{employee.manager || "Sarah Jenkins"}</span>
               </div>
               <div className="flex flex-col gap-0.5">
-                <span className="text-muted font-medium">Date of Birth</span>
-                <span className="font-semibold text-ink">{employee.date_of_birth || "1990-05-12"}</span>
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-muted font-medium">Monthly Salary</span>
-                <span className="font-semibold text-ink">
-                  {employee.salary ? `₹${employee.salary.toLocaleString()}` : "Not Configured"}
-                </span>
+                <span className="text-muted font-medium">Date of Joining</span>
+                <span className="font-semibold text-ink">{employee.date_of_joining || "--"}</span>
               </div>
             </div>
           </div>
@@ -177,63 +162,17 @@ export const EmployeeDetail = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-canvas border border-hairline rounded text-muted shrink-0">
-                  <Phone size={14} />
+              {employee.phone && (
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-canvas border border-hairline rounded text-muted shrink-0">
+                    <Phone size={14} />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-muted font-medium">Work Phone</span>
+                    <span className="font-semibold text-ink">{employee.phone}</span>
+                  </div>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-muted font-medium">Phone Number</span>
-                  <span className="font-semibold text-ink">{employee.phone || "+1 (555) 019-2834"}</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-canvas border border-hairline rounded text-muted shrink-0">
-                  <MapPin size={14} />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-muted font-medium">Residential Address</span>
-                  <span className="font-semibold text-ink">{employee.address || "742 Evergreen Terrace, Springfield"}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-        {/* TIME OFF & BALANCES GRID */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          
-          <div className="bg-surface-card border border-hairline rounded-lg p-5 text-left">
-            <span className="text-[10px] font-bold text-muted uppercase tracking-wider">Paid leaves available</span>
-            <div className="flex items-baseline gap-1 mt-3">
-              <span className="text-3xl font-semibold text-ink">{leaveBalances.PAID}</span>
-              <span className="text-xs text-muted">days</span>
-            </div>
-            <div className="w-full bg-canvas-soft h-1 rounded-full mt-3.5 overflow-hidden">
-              <div className="bg-primary h-full w-[70%] rounded-full"></div>
-            </div>
-          </div>
-
-          <div className="bg-surface-card border border-hairline rounded-lg p-5 text-left">
-            <span className="text-[10px] font-bold text-muted uppercase tracking-wider">Sick leaves available</span>
-            <div className="flex items-baseline gap-1 mt-3">
-              <span className="text-3xl font-semibold text-ink">{leaveBalances.SICK}</span>
-              <span className="text-xs text-muted">days</span>
-            </div>
-            <div className="w-full bg-canvas-soft h-1 rounded-full mt-3.5 overflow-hidden">
-              <div className="bg-blue-500 h-full w-[45%] rounded-full"></div>
-            </div>
-          </div>
-
-          <div className="bg-surface-card border border-hairline rounded-lg p-5 text-left">
-            <span className="text-[10px] font-bold text-muted uppercase tracking-wider">Unpaid leaves taken</span>
-            <div className="flex items-baseline gap-1 mt-3">
-              <span className="text-3xl font-semibold text-ink">{15 - leaveBalances.UNPAID}</span>
-              <span className="text-xs text-muted">days</span>
-            </div>
-            <div className="w-full bg-canvas-soft h-1 rounded-full mt-3.5 overflow-hidden">
-              <div className="bg-amber-500 h-full w-[33%] rounded-full"></div>
+              )}
             </div>
           </div>
 

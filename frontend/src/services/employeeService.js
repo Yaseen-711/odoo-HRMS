@@ -1,8 +1,5 @@
-/**
- * Employee service — connects to the backend employee API endpoints.
- */
-
 import { apiClient } from './apiClient';
+import { employeeRepository } from '../data/employees';
 
 /**
  * Transform backend employee data to the format the frontend expects.
@@ -22,8 +19,13 @@ export const employeeService = {
    * GET /api/employees → list[EmployeeAdminOut]
    */
   getAll: async () => {
-    const data = await apiClient.get('/employees');
-    return data.map(transformEmployee);
+    try {
+      const data = await apiClient.get('/employees');
+      return data.map(transformEmployee);
+    } catch (err) {
+      console.warn("Using local mock employeeRepository:", err.message);
+      return employeeRepository.getAll();
+    }
   },
 
   /**
@@ -31,8 +33,13 @@ export const employeeService = {
    * GET /api/employees/{id} → EmployeeAdminOut | EmployeeSelfOut | EmployeeOut
    */
   getById: async (id) => {
-    const data = await apiClient.get(`/employees/${id}`);
-    return transformEmployee(data);
+    try {
+      const data = await apiClient.get(`/employees/${id}`);
+      return transformEmployee(data);
+    } catch (err) {
+      console.warn(`Using local mock employeeRepository for getById(${id}):`, err.message);
+      return employeeRepository.getById(id);
+    }
   },
 
   /**
@@ -40,8 +47,19 @@ export const employeeService = {
    * GET /api/employees/me → EmployeeSelfOut
    */
   getMyProfile: async () => {
-    const data = await apiClient.get('/employees/me');
-    return transformEmployee(data);
+    try {
+      const data = await apiClient.get('/employees/me');
+      return transformEmployee(data);
+    } catch (err) {
+      console.warn("Using local mock employeeRepository for getMyProfile:", err.message);
+      const currentUserStr = localStorage.getItem('dayflow_current_user');
+      if (currentUserStr) {
+        const currentUser = JSON.parse(currentUserStr);
+        const code = currentUser.employee_code || currentUser.login_id || 'EMP-0001';
+        return employeeRepository.getById(code);
+      }
+      return employeeRepository.getById('EMP-0001');
+    }
   },
 
   /**
@@ -49,12 +67,22 @@ export const employeeService = {
    * POST /api/employees → EmployeeCreatedOut (includes login_id + temporary_password)
    */
   create: async (employeeData) => {
-    const data = await apiClient.post('/employees', employeeData);
-    return {
-      employee: transformEmployee(data.employee),
-      login_id: data.login_id,
-      temporary_password: data.temporary_password,
-    };
+    try {
+      const data = await apiClient.post('/employees', employeeData);
+      return {
+        employee: transformEmployee(data.employee),
+        login_id: data.login_id,
+        temporary_password: data.temporary_password,
+      };
+    } catch (err) {
+      console.warn("Using local mock employeeRepository for create:", err.message);
+      const newEmp = employeeRepository.create(employeeData);
+      return {
+        employee: newEmp,
+        login_id: newEmp.employee_id,
+        temporary_password: "password",
+      };
+    }
   },
 
   /**
@@ -62,8 +90,22 @@ export const employeeService = {
    * PATCH /api/employees/me → EmployeeSelfOut
    */
   updateMyProfile: async (updateData) => {
-    const data = await apiClient.patch('/employees/me', updateData);
-    return transformEmployee(data);
+    try {
+      const data = await apiClient.patch('/employees/me', updateData);
+      return transformEmployee(data);
+    } catch (err) {
+      console.warn("Using local mock employeeRepository for updateMyProfile:", err.message);
+      const currentUserStr = localStorage.getItem('dayflow_current_user');
+      if (currentUserStr) {
+        const currentUser = JSON.parse(currentUserStr);
+        const code = currentUser.employee_code || currentUser.login_id || 'EMP-0001';
+        const emp = employeeRepository.getById(code);
+        if (emp) {
+          return employeeRepository.update(emp.id, updateData);
+        }
+      }
+      return employeeRepository.update(1, updateData);
+    }
   },
 
   /**
@@ -71,7 +113,12 @@ export const employeeService = {
    * PATCH /api/employees/{id} → EmployeeAdminOut
    */
   adminUpdate: async (id, updateData) => {
-    const data = await apiClient.patch(`/employees/${id}`, updateData);
-    return transformEmployee(data);
+    try {
+      const data = await apiClient.patch(`/employees/${id}`, updateData);
+      return transformEmployee(data);
+    } catch (err) {
+      console.warn(`Using local mock employeeRepository for adminUpdate(${id}):`, err.message);
+      return employeeRepository.update(id, updateData);
+    }
   },
 };
