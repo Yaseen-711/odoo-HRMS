@@ -1,0 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-canvas text-body font-sans antialiased selection:bg-primary/20 selection:text-ink;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-ink font-sans tracking-tight;
+  }
+}
+
+/* Custom Scrollbar for modern SaaS feel (matching dark theme) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #111215;
+}
+::-webkit-scrollbar-thumb {
+  background: #26272e;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #32343d;
+}
+
+/* Timeline pill classes */
+.timeline-thinking {
+  @apply bg-timeline-thinking text-ink text-[11px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider;
+}
+.timeline-grep {
+  @apply bg-timeline-grep text-white text-[11px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider;
+}
+.timeline-read {
+  @apply bg-timeline-read text-ink text-[11px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider;
+}
+.timeline-edit {
+  @apply bg-timeline-edit text-white text-[11px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider;
+}
+.timeline-done {
+  @apply bg-timeline-done text-ink text-[11px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider;
+}
+
+/* Remove default autofill background on inputs */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #f9fafb;
+  -webkit-box-shadow: 0 0 0px 1000px #1a1b1f inset;
+  transition: background-color 5000s ease-in-out 0s;
+  border: 1px solid #32343d;
+}
+
