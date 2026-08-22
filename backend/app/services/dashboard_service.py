@@ -43,7 +43,7 @@ async def get_summary(db: AsyncSession, current_user: User) -> DashboardSummaryO
     employee = await get_employee_by_user_id(db, current_user.id)
 
     employee_snap = EmployeeSnapshot(
-        employee_id=employee.employee_id,
+        employee_code=employee.employee_code,
         first_name=employee.first_name,
         last_name=employee.last_name,
         department=employee.department,
@@ -114,9 +114,9 @@ async def get_summary(db: AsyncSession, current_user: User) -> DashboardSummaryO
         payroll_summary = PayrollSummary(has_salary_structure=False)
 
     logger.info(
-        "Dashboard summary built  user_id=%s  employee_id=%s",
+        "Dashboard summary built  user_id=%s  employee_code=%s",
         current_user.id,
-        employee.employee_id,
+        employee.employee_code,
     )
 
     return DashboardSummaryOut(

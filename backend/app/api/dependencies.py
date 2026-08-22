@@ -60,5 +60,14 @@ async def require_admin(
 async def require_employee(
     current_user: User = Depends(get_current_user),
 ) -> User:
-    """Dependency that allows both ADMIN and EMPLOYEE roles (any authenticated user)."""
+    """Dependency that allows all roles (ADMIN, HR_OFFICER, and EMPLOYEE)."""
+    return current_user
+
+
+async def require_admin_or_hr(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """Dependency that enforces ADMIN or HR_OFFICER role."""
+    if current_user.role not in (UserRole.ADMIN, UserRole.HR_OFFICER):
+        raise ForbiddenError("Admin or HR access required")
     return current_user

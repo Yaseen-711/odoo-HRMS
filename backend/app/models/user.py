@@ -11,6 +11,7 @@ from app.db.base import Base
 
 class UserRole(str, enum.Enum):
     ADMIN = "ADMIN"
+    HR_OFFICER = "HR_OFFICER"
     EMPLOYEE = "EMPLOYEE"
 
 

@@ -42,10 +42,10 @@ async def test_dashboard_employee_snapshot_fields(
     )
     assert resp.status_code == 200
     emp = resp.json()["employee"]
-    assert "employee_id" in emp
+    assert "employee_code" in emp
     assert "first_name" in emp
     assert "last_name" in emp
-    assert emp["employee_id"].startswith("EMP-")
+    assert emp["employee_code"].startswith("EMP-")
 
 
 @pytest.mark.asyncio

@@ -23,7 +23,7 @@ class Employee(Base):
     )
 
     # HR-visible identifier shown on payslips, badges, etc.
-    employee_id: Mapped[str] = mapped_column(
+    employee_code: Mapped[str] = mapped_column(
         String(50),
         unique=True,
         nullable=False,
@@ -37,6 +37,24 @@ class Employee(Base):
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
     date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
     profile_picture: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    personal_email: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    gender: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    nationality: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    marital_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    pan: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    uan: Mapped[str | None] = mapped_column(String(12), nullable=True)
+
+    # Bank details
+    bank_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    account_number: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    ifsc_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    # Bio & custom text details
+    about_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    job_love_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    hobbies_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    skills: Mapped[str | None] = mapped_column(Text, nullable=True)
+    certifications: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Job details
     date_of_joining: Mapped[date | None] = mapped_column(Date, nullable=True)

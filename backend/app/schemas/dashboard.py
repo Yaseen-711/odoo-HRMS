@@ -33,7 +33,7 @@ class PayrollSummary(BaseModel):
 class EmployeeSnapshot(BaseModel):
     """Quick-reference identity fields for the dashboard header."""
 
-    employee_id: str
+    employee_code: str
     first_name: str
     last_name: str
     department: Optional[str] = None

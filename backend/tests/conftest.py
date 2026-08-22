@@ -53,7 +53,7 @@ async def test_db_session():
 @pytest_asyncio.fixture
 async def client() -> AsyncClient:
     async with AsyncClient(
-        transport=ASGITransport(app=app),
+        transport=ASGITransport(app=app, raise_app_exceptions=False),
         base_url="http://test",
     ) as ac:
         yield ac
@@ -111,5 +111,34 @@ async def employee_token(client: AsyncClient, created_employee: dict) -> str:
         "login_id": created_employee["login_id"],
         "password": created_employee["temporary_password"],
     })
+    assert resp.status_code == 200, resp.text
+    return resp.json()["access_token"]
+
+
+@pytest_asyncio.fixture
+async def hr_credentials(test_db_session) -> dict:
+    """Seed a fresh HR Officer user using the test session factory."""
+    unique = uuid.uuid4().hex[:8]
+    login_id = f"HR-TEST-{unique}"
+    email = f"hr-{unique}@hrms-test.com"
+
+    async with test_db_session() as db:
+        user = User(
+            login_id=login_id,
+            email=email,
+            hashed_password=hash_password("HRPass@1"),
+            role=UserRole.HR_OFFICER,
+            must_change_password=False,
+            is_active=True,
+        )
+        db.add(user)
+        await db.commit()
+
+    return {"login_id": login_id, "password": "HRPass@1"}
+
+
+@pytest_asyncio.fixture
+async def hr_token(client: AsyncClient, hr_credentials: dict) -> str:
+    resp = await client.post("/api/auth/login", json=hr_credentials)
     assert resp.status_code == 200, resp.text
     return resp.json()["access_token"]
